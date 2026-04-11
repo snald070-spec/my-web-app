@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Draw Basketball Team</string>
+    <string name="title_activity_main">Draw Basketball Team</string>
+    <string name="package_name">com.drawbasketball.team</string>
+    <string name="custom_url_scheme">com.drawbasketball.team</string>
+</resources>

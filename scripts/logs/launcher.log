@@ -1,0 +1,43 @@
+[2026-04-09 20:02:29] backend already listening on port 8000
+[2026-04-09 20:02:31] frontend already listening on port 8080
+[2026-04-09 20:02:31] Startup script completed
+[2026-04-09 20:03:37] backend already listening on port 8000
+[2026-04-09 20:03:40] frontend already listening on port 8080
+[2026-04-09 20:03:40] Startup script completed
+[2026-04-09 20:27:36] backend already listening on port 8000
+[2026-04-09 20:27:38] frontend already listening on port 8080
+[2026-04-09 20:27:38] Startup script completed
+[2026-04-09 20:28:52] Started backend on port 8000 with PID 5664
+[2026-04-09 20:28:54] Started frontend on port 8080 with PID 13516
+[2026-04-09 20:28:54] Startup script completed
+[2026-04-09 20:31:11] Started backend on port 8000 with PID 21268
+[2026-04-09 20:31:13] frontend already listening on port 8080
+[2026-04-09 20:31:13] Startup script completed
+[2026-04-09 20:32:09] Started backend on port 8000 with PID 28104
+[2026-04-09 20:32:11] frontend already listening on port 8080
+[2026-04-09 20:32:11] Startup script completed
+[2026-04-09 20:37:30] Started backend on port 8000 with PID 13876
+[2026-04-09 20:37:32] frontend already listening on port 8080
+[2026-04-09 20:37:32] Startup script completed
+[2026-04-09 20:44:54] Started backend on port 8000 with PID 2796
+[2026-04-09 20:44:57] frontend already listening on port 8080
+[2026-04-09 20:44:57] Startup script completed
+[2026-04-10 20:22:27] Started backend on port 8000 with PID 24396
+[2026-04-10 20:22:30] Started frontend on port 8080 with PID 33248
+[2026-04-10 20:22:30] Startup script completed
+[2026-04-11 08:45:11] Started backend on port 8000 with PID 18764
+[2026-04-11 08:45:14] Started frontend on port 8080 with PID 20452
+[2026-04-11 08:45:14] Startup script completed
+[2026-04-11 16:01:45] Started backend on port 8000 with PID 15620
+[2026-04-11 16:01:47] Started frontend on port 8080 with PID 9104
+[2026-04-11 16:01:47] Startup script completed
+[2026-04-11 18:49:02] Stopped existing backend on port 8000 (PID 22380) due to -Restart
+[2026-04-11 18:49:02] Started backend on port 8000 with PID 12672
+[2026-04-11 18:49:04] Stopped existing frontend on port 8080 (PID 28432) due to -Restart
+[2026-04-11 18:49:04] Started frontend on port 8080 with PID 2036
+[2026-04-11 18:49:04] Startup script completed
+[2026-04-11 19:01:17] Stopped existing backend on port 8000 (PID 22868) due to -Restart
+[2026-04-11 19:01:17] Started backend on port 8000 with PID 27224
+[2026-04-11 19:01:23] Stopped existing frontend on port 8080 (PID 8584) due to -Restart
+[2026-04-11 19:01:23] Started frontend on port 8080 with PID 30220
+[2026-04-11 19:01:25] Startup script completed

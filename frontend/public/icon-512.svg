@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Draw Basketball Team">
+  <rect width="512" height="512" rx="96" fill="#1d4ed8"/>
+  <circle cx="256" cy="256" r="150" fill="#f97316"/>
+  <path d="M106 256h300M256 106v300M150 150c62 50 96 166 0 212M362 150c-62 50-96 166 0 212" stroke="#111827" stroke-width="16" fill="none" stroke-linecap="round"/>
+</svg>

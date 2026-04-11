@@ -1,0 +1,96 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "[Tunnel] Cloudflare Tunnel Start",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\start-cloudflare-tunnel.ps1"],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Tunnel] Cloudflare Tunnel Setup (first time)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\start-cloudflare-tunnel.ps1","-Setup"],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Deploy] Production Readiness Check",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\pre-deploy-check.ps1"],
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Deploy] Apply APP_ENV=production",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\pre-deploy-check.ps1","-ApplyProduction"],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Backend] Restart",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\start-services.ps1","-Restart"],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Backend] Start All Services",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\start-services.ps1"],
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Test] E2E Test",
+      "type": "shell",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\backend\\e2e_test.py","--base-url","http://127.0.0.1:8000","--admin-id","admin","--admin-pw","${input:adminPassword}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[Test] RBAC QC",
+      "type": "shell",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["${workspaceFolder}\\backend\\qc_security_rbac.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "[DB] Manual Backup",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-ExecutionPolicy","Bypass","-File","${workspaceFolder}\\scripts\\backup-db.ps1"],
+      "group": "none",
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "adminPassword",
+      "type": "promptString",
+      "description": "Enter admin password for E2E test",
+      "password": true
+    }
+  ]
+}

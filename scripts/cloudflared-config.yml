@@ -1,0 +1,30 @@
+# Cloudflare Tunnel Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# 사용법:
+#   1. cloudflared 설치 후 `cloudflared tunnel login` 실행
+#   2. `cloudflared tunnel create draw-backend` 으로 터널 생성
+#   3. 생성된 터널 UUID를 아래 tunnel: 항목에 입력
+#   4. ingress rules에서 도메인을 실제 도메인으로 변경
+#   5. `cloudflared tunnel run draw-backend` 실행
+#      (또는 scripts/start-cloudflare-tunnel.ps1 사용)
+#
+# 공식 문서: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+# ─────────────────────────────────────────────────────────────────────────────
+
+# cloudflared tunnel list 로 확인한 UUID를 입력하세요
+tunnel: <YOUR_TUNNEL_UUID>
+
+credentials-file: C:\Users\sksky\.cloudflared\<YOUR_TUNNEL_UUID>.json
+
+ingress:
+  # FastAPI 백엔드 API (포트 8000)
+  - hostname: draw.example.com
+    path: /api
+    service: http://127.0.0.1:8000
+
+  # React 프론트엔드 (포트 5173 dev / 빌드 서빙 시 백엔드가 static 서빙)
+  - hostname: draw.example.com
+    service: http://127.0.0.1:8000
+
+  # 모든 나머지 요청 거부
+  - service: http_status:404

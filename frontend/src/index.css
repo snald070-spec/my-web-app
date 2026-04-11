@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════
+   Design Tokens
+   ═══════════════════════════════════════════════════ */
+:root {
+  --color-primary:       #2563eb;
+  --color-primary-dark:  #1d4ed8;
+  --color-primary-light: #eff6ff;
+
+  --color-surface:  #ffffff;
+  --color-bg:       #f4f5f7;
+  --color-border:   #e5e7eb;
+
+  --color-text-primary:   #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary:  #9ca3af;
+
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger:  #dc2626;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:    0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.20);
+
+  --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ═══════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply text-sm;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    line-height: 1.6;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+  th, button { white-space: nowrap; }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar          { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track    { background: transparent; }
+  ::-webkit-scrollbar-thumb    { background: #d1d5db; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+  /* Firefox */
+  * { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+}
+
+/* ═══════════════════════════════════════════════════
+   Component classes  (use these in JSX via className)
+   ═══════════════════════════════════════════════════ */
+@layer components {
+
+  /* ── Card ─────────────────────────────────────── */
+  .card {
+    @apply bg-white rounded-2xl border border-gray-100;
+    box-shadow: var(--shadow-md);
+  }
+  .card-hover:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+  /* ── Buttons ──────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 font-semibold
+           rounded-lg px-4 py-2 text-sm select-none cursor-pointer;
+    transition: background-color var(--transition), box-shadow var(--transition), transform var(--transition);
+  }
+  .btn:active   { transform: scale(0.97); }
+  .btn:disabled { @apply opacity-40 pointer-events-none; }
+
+  .btn-primary  { @apply btn text-white; background-color: var(--color-primary); }
+  .btn-primary:hover  { background-color: var(--color-primary-dark); }
+
+  .btn-secondary { @apply btn bg-white text-gray-700 border border-gray-200; box-shadow: var(--shadow-sm); }
+  .btn-secondary:hover { @apply bg-gray-50 border-gray-300; }
+
+  .btn-danger { @apply btn text-white; background-color: var(--color-danger); }
+  .btn-danger:hover { background-color: #b91c1c; }
+
+  .btn-ghost { @apply btn text-gray-600 bg-transparent; }
+  .btn-ghost:hover { @apply bg-gray-100 text-gray-800; }
+
+  .btn-sm  { @apply px-3 py-1.5 text-xs rounded-md; }
+  .btn-lg  { @apply px-6 py-3 text-base rounded-xl; }
+  .btn-icon { @apply btn p-2 rounded-lg; }
+
+  /* ── Form fields ──────────────────────────────── */
+  .field-label    { @apply block text-xs font-semibold text-gray-600 mb-1; }
+  .field-required::after { content: " *"; color: var(--color-danger); }
+
+  .field-input, .field-select, .field-textarea {
+    @apply w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5
+           text-sm text-gray-900 placeholder-gray-400;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .field-input:focus, .field-select:focus, .field-textarea:focus {
+    @apply outline-none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  .field-input:disabled, .field-select:disabled, .field-textarea:disabled {
+    @apply bg-gray-50 text-gray-400 cursor-not-allowed;
+  }
+  .field-textarea { @apply resize-none leading-relaxed; min-height: 96px; }
+  .field-hint  { @apply mt-1 text-xs text-gray-400; }
+  .field-error { @apply mt-1 text-xs; color: var(--color-danger); }
+
+  /* ── Data table ───────────────────────────────── */
+  .data-table { @apply w-full text-sm; border-collapse: separate; border-spacing: 0; }
+  .data-table thead tr { @apply bg-gray-50 z-10; position: -webkit-sticky; position: sticky; top: 0; }
+  .data-table thead th {
+    @apply px-3 py-2.5 text-center text-xs font-semibold text-gray-500
+           border-b border-gray-200 whitespace-nowrap;
+    letter-spacing: 0.02em;
+  }
+  .data-table tbody td { @apply px-3 py-2.5 text-center align-middle border-b border-gray-100 text-gray-700 text-sm; }
+  .data-table tbody tr:last-child td { @apply border-b-0; }
+  .data-table tbody tr { transition: background-color var(--transition); }
+  .data-table tbody tr:hover td { @apply bg-gray-50/70; }
+  .data-table td .field-select {
+    width: auto;
+    min-width: 104px;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    text-align-last: center;
+  }
+  .data-table td .field-select option {
+    text-align: center;
+  }
+
+  /* Score sheet viewer: two-line grouped header for shooting columns */
+  .scoresheet-team-table thead tr {
+    position: static;
+  }
+  .scoresheet-team-table thead tr:first-child th {
+    @apply bg-gray-100;
+  }
+  .scoresheet-team-table thead tr:nth-child(2) th {
+    @apply bg-gray-50;
+  }
+  .scoresheet-team-table thead th {
+    @apply py-px text-[11px];
+    padding-left: 1px;
+    padding-right: 1px;
+  }
+  .scoresheet-team-table tbody td {
+    @apply py-px text-xs;
+    padding-left: 1px;
+    padding-right: 1px;
+  }
+
+  /* Attendance tables: reduce forced wraps by using compact no-wrap cells */
+  .attendance-compact-table thead th {
+    @apply whitespace-nowrap px-2 py-2 text-[11px];
+  }
+  .attendance-compact-table tbody td {
+    @apply whitespace-nowrap px-2 py-2 text-xs;
+  }
+
+  /* ── Badge ────────────────────────────────────── */
+  .badge        { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap; }
+  .badge-gray   { @apply badge bg-gray-100  text-gray-600; }
+  .badge-red    { @apply badge bg-red-50    text-red-700; }
+  .badge-green  { @apply badge bg-green-50  text-green-700; }
+  .badge-yellow { @apply badge bg-amber-50  text-amber-700; }
+  .badge-blue   { @apply badge bg-blue-50   text-blue-700; }
+
+  /* ── Alert ────────────────────────────────────── */
+  .alert         { @apply flex items-start gap-3 rounded-xl px-4 py-3 text-sm; }
+  .alert-info    { @apply alert bg-blue-50   text-blue-800  border border-blue-100; }
+  .alert-success { @apply alert bg-green-50  text-green-800 border border-green-100; }
+  .alert-warning { @apply alert bg-amber-50  text-amber-800 border border-amber-100; }
+  .alert-danger  { @apply alert bg-red-50    text-red-800   border border-red-100; }
+
+  /* ── Modal ────────────────────────────────────── */
+  .modal-overlay { @apply fixed inset-0 z-50 flex items-center justify-center p-4; background: rgba(0,0,0,0.45); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .modal-panel   { @apply bg-white rounded-2xl w-full max-w-lg; box-shadow: var(--shadow-modal); animation: scale-in 0.2s ease both; max-height: 90vh; overflow-y: auto; }
+  .modal-header  { @apply flex items-center justify-between px-6 py-5 border-b border-gray-100; }
+  .modal-title   { @apply text-base font-bold; }
+  .modal-body    { @apply px-6 py-5; }
+  .modal-footer  { @apply flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl; }
+
+  /* ── Empty state ──────────────────────────────── */
+  .empty-state      { @apply flex flex-col items-center justify-center gap-3 py-16 text-center; color: var(--color-text-tertiary); }
+  .empty-state-icon { @apply text-4xl opacity-40; }
+  .empty-state-text { @apply text-sm font-medium; }
+
+  /* ── Skeleton loader ──────────────────────────── */
+  .skeleton {
+    @apply rounded-lg;
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shine 1.6s linear infinite;
+  }
+
+  /* ── Stat card ────────────────────────────────── */
+  .stat-card  { @apply bg-white rounded-xl border border-gray-100 px-5 py-4 flex flex-col gap-1; box-shadow: var(--shadow-sm); }
+  .stat-value { @apply text-2xl font-bold tracking-tight; }
+  .stat-label { @apply text-xs font-medium; color: var(--color-text-secondary); }
+
+  /* ── Page layout helpers ──────────────────────── */
+  .page-container { @apply w-full px-4 sm:px-6 py-6 space-y-5; }
+  .page-title     { @apply text-xl font-bold tracking-tight; }
+  .page-subtitle  { @apply mt-1 text-sm; color: var(--color-text-secondary); }
+  .section-title  { @apply text-sm font-bold text-gray-700 flex items-center gap-2 mb-3; }
+
+  /* ── Action bar (search + filter row above tables) */
+  .action-bar { @apply flex flex-wrap items-center gap-2; }
+
+  /* ── Filter chips ─────────────────────────────── */
+  .filter-chip        { @apply inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-200 bg-white text-gray-600 cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-colors; }
+  .filter-chip-active { @apply border-transparent bg-gray-800 text-white hover:bg-gray-700; }
+
+  /* ── Loading spinner ──────────────────────────── */
+  .spinner { @apply inline-block w-5 h-5 rounded-full border-2 border-gray-200; border-top-color: var(--color-primary); animation: spin 0.7s linear infinite; }
+}
+
+/* ═══════════════════════════════════════════════════
+   Keyframes
+   ═══════════════════════════════════════════════════ */
+@keyframes spin           { to { transform: rotate(360deg); } }
+@keyframes skeleton-shine { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes scale-in       { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes fade-in        { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
