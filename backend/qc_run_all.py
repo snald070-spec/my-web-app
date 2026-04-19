@@ -9,13 +9,14 @@ import subprocess, sys, time, argparse, urllib.request, urllib.error
 from pathlib import Path
 
 
-def wait_for_server(url: str = "http://127.0.0.1:8000/health", timeout: int = 30) -> bool:
+def wait_for_server(url: str = "http://127.0.0.1:8000/", timeout: int = 30) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(url, timeout=2) as r:
-                if r.status < 500:
-                    return True
+            urllib.request.urlopen(url, timeout=2)
+            return True
+        except urllib.error.HTTPError:
+            return True  # server responded (even with 4xx) — it's up
         except Exception:
             pass
         time.sleep(1)
