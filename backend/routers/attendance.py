@@ -182,6 +182,9 @@ def create_event(
     admin_user: models.User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    if not (body.title or "").strip():
+        raise HTTPException(status_code=400, detail="이벤트 제목은 필수입니다.")
+
     vote_type_raw = (body.vote_type or "REST").upper().strip()
     try:
         vote_type = models.AttendanceVoteTypeEnum(vote_type_raw)

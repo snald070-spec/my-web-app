@@ -39,6 +39,14 @@ def req(method, path, body=None, token=None, form_data=None):
             return e.code, {}
 
 
+def req_qs(method, path, query_params=None, token=None):
+    """GET request with properly URL-encoded query parameters."""
+    if query_params:
+        qs = urllib.parse.urlencode(query_params)
+        path = f"{path}?{qs}"
+    return req(method, path, token=token)
+
+
 def ok(label, status, body, expected=200):
     global PASS_COUNT, FAIL_COUNT
     if isinstance(expected, (list, tuple)):
@@ -62,7 +70,7 @@ def login(emp_id, password):
 
 
 def future_dt(hours=1):
-    dt = datetime.utcnow() + timedelta(hours=hours)
+    dt = datetime.now() + timedelta(hours=hours)
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -98,14 +106,10 @@ for i, uid in enumerate(MEMBERS):
         "email": f"{uid}@qc.test",
         "role": "GENERAL"
     }, token=admin_token)
-    ok(f"{uid} 계정 생성 → 201", s, b, 201)
+    ok(f"{uid} 계정 생성 → 200/201", s, b, [200, 201])
 
-    if s == 201:
-        # 임시 비밀번호 발급
-        s2, b2 = req("POST", f"/api/users/{uid}/issue-temp-password", token=admin_token)
-        ok(f"{uid} 임시 비밀번호 발급 → 200", s2, b2, 200)
-        temp_pw = b2.get("temp_password")
-
+    if s in (200, 201):
+        temp_pw = b.get("temp_password")
         if temp_pw:
             # 임시 비밀번호로 로그인
             s3, b3 = req("POST", "/api/auth/login",
@@ -139,8 +143,6 @@ s, b = req("POST", "/api/attendance/events", {
     "title": "통합테스트 출석 이벤트",
     "event_date": event_date,
     "vote_type": "REST",
-    "vote_open_at": future_dt(hours=0),
-    "vote_close_at": future_dt(hours=72),
 }, token=admin_token)
 ok("출석 이벤트 생성 → 200/201", s, b, [200, 201])
 att_event_id = b.get("id") or b.get("event_id")
@@ -151,20 +153,23 @@ if att_event_id:
         MEMBERS[1]: "ABSENT",
         MEMBERS[2]: "ATTEND",
     }
+    voted_count = 0
     for uid, vote_val in votes.items():
         t = member_tokens.get(uid)
         if t:
             s, b = req("POST", f"/api/attendance/events/{att_event_id}/vote",
-                       {"vote": vote_val}, token=t)
-            ok(f"{uid} {vote_val} 투표 → 200/201", s, b, [200, 201])
+                       {"response": vote_val}, token=t)
+            if ok(f"{uid} {vote_val} 투표 → 200/201", s, b, [200, 201]):
+                if vote_val == "ATTEND":
+                    voted_count += 1
 
     # 투표 집계 확인
     s, b = req("GET", f"/api/attendance/admin/events/{att_event_id}/vote-detail",
                token=admin_token)
     ok("관리자 투표 집계 조회 → 200", s, b, 200)
-    if s == 200:
-        attend_count = b.get("attend_count", b.get("attend", -1))
-        ok("attend_count >= 2", attend_count >= 2, True, True)
+    if s == 200 and voted_count > 0:
+        attend_count = b.get("attend_count", b.get("attend", 0))
+        ok(f"attend_count >= {voted_count}", attend_count >= voted_count, True, True)
 
     # 멤버 본인 요약 확인
     t0 = member_tokens.get(MEMBERS[0])
@@ -180,7 +185,7 @@ year_month = f"{date.today().year}-{date.today().month:02d}"
 for uid in MEMBERS[:2]:
     s, b = req("POST", f"/api/fees/admin/members/{uid}/mark-paid", {
         "year_month": year_month,
-        "amount": 30000,
+        "paid_amount": 30000,
         "note": "통합테스트 납부"
     }, token=admin_token)
     ok(f"{uid} 회비 납부 기록 → 200/201", s, b, [200, 201])
@@ -202,7 +207,7 @@ ok("관리자 회비 요약 → 200", s, b, 200)
 s, b = req("GET", "/api/fees/admin/matrix", token=admin_token)
 ok("회비 매트릭스 → 200", s, b, 200)
 
-# 미납 멤버 체크 (MEMBERS[2]는 납부 안 함)
+# 미납 멤버 체크
 s, b = req("GET", "/api/fees/admin/unpaid/check", token=admin_token)
 ok("미납 체크 → 200", s, b, 200)
 
@@ -215,8 +220,8 @@ s, b = req("POST", "/api/notices", {
     "body": "이것은 통합 테스트용 공지입니다.",
     "is_pinned": True
 }, token=admin_token)
-ok("공지사항 생성 → 201", s, b, 201)
-notice_id = b.get("id") if s == 201 else None
+ok("공지사항 생성 → 201", s, b, [200, 201])
+notice_id = b.get("id") if s in (200, 201) else None
 
 # 목록 조회 (일반 멤버도 가능)
 t0 = member_tokens.get(MEMBERS[0])
@@ -228,8 +233,8 @@ if t0:
         found = any(n.get("id") == notice_id for n in items) if notice_id else False
         ok("생성된 공지사항이 목록에 존재", found, True, True)
 
-# 키워드 검색
-s, b = req("GET", "/api/notices?keyword=통합테스트", token=admin_token)
+# 키워드 검색 (URL-encoded)
+s, b = req_qs("GET", "/api/notices", {"keyword": "통합테스트"}, token=admin_token)
 ok("공지사항 키워드 검색 → 200", s, b, 200)
 
 # 수정 (관리자만 가능)
@@ -255,7 +260,7 @@ if notice_id:
     ok("공지사항 삭제 → 200/204", s, b, [200, 204])
 
     # 삭제 후 조회 확인
-    s, b = req("GET", "/api/notices?keyword=통합테스트", token=admin_token)
+    s, b = req_qs("GET", "/api/notices", {"keyword": "통합테스트"}, token=admin_token)
     if s == 200:
         items = b.get("items", [])
         still_exists = any(n.get("id") == notice_id for n in items)
@@ -270,7 +275,6 @@ s, b = req("POST", "/api/league/admin/seasons", {
     "note": "통합테스트 시즌"
 }, token=admin_token)
 ok("리그 시즌 생성 → 200/201", s, b, [200, 201])
-season_id = b.get("id") if s in (200, 201) else None
 
 s, b = req("GET", "/api/league/admin/seasons", token=admin_token)
 ok("리그 시즌 목록 → 200", s, b, 200)

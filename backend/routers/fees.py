@@ -96,8 +96,8 @@ def _is_paid_for_month(db: Session, emp_id: str, year_month: str) -> bool:
 
 
 class MemberProfileUpdate(BaseModel):
-    membership_type: str
-    member_status: str
+    membership_type: str | None = None
+    member_status: str | None = None
 
 
 class MarkPaidBody(BaseModel):
@@ -708,15 +708,23 @@ def update_member_profile(
     if not user:
         raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
 
-    try:
-        next_type = models.MembershipTypeEnum((body.membership_type or "").upper().strip())
-        next_status = models.MemberStatusEnum((body.member_status or "").upper().strip())
-    except ValueError:
-        raise HTTPException(status_code=400, detail="잘못된 회원 설정 값입니다.")
+    if body.membership_type is None and body.member_status is None:
+        raise HTTPException(status_code=400, detail="변경할 필드가 없습니다.")
 
     profile = _get_or_create_profile(db, user)
-    profile.membership_type = next_type
-    profile.member_status = next_status
+
+    if body.membership_type is not None:
+        try:
+            profile.membership_type = models.MembershipTypeEnum(body.membership_type.upper().strip())
+        except ValueError:
+            raise HTTPException(status_code=422, detail="잘못된 membership_type 값입니다.")
+
+    if body.member_status is not None:
+        try:
+            profile.member_status = models.MemberStatusEnum(body.member_status.upper().strip())
+        except ValueError:
+            raise HTTPException(status_code=422, detail="잘못된 member_status 값입니다.")
+
     profile.updated_by = admin_user.emp_id
 
     try:

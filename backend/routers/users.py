@@ -172,7 +172,7 @@ def _serialize_user(user: models.User) -> dict:
     }
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_user(
     body: UserCreate,
     admin_user: models.User = Depends(require_admin),
@@ -183,7 +183,7 @@ def create_user(
         raise HTTPException(status_code=400, detail="ID is required.")
 
     if db.query(models.User).filter(models.User.emp_id == emp_id).first():
-        raise HTTPException(status_code=400, detail="이미 사용 중인 이름(아이디)입니다.")
+        raise HTTPException(status_code=409, detail="이미 사용 중인 이름(아이디)입니다.")
 
     actor_is_master = has_master_access(admin_user)
     role_norm = (body.role or "").upper().strip()
@@ -239,6 +239,18 @@ def create_user(
         "temp_password": temp_pw,
         "message": "User created with temporary password.",
     }
+
+
+@router.get("/{emp_id}")
+def get_user(
+    emp_id: str,
+    _admin: models.User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return _serialize_user(user)
 
 
 @router.get("/{emp_id}/audit")

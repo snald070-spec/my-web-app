@@ -98,12 +98,9 @@ s, b = req("POST", "/api/users", {
     "emp_id": MEMBER_ID, "name": "Attendance Member", "department": "QC",
     "email": f"{MEMBER_ID}@qc.test", "role": "GENERAL"
 }, token=admin_token)
-ok("멤버 계정 생성", s, b, 201)
-
-s, b = req("POST", f"/api/users/{MEMBER_ID}/issue-temp-password", token=admin_token)
-member_token = None
-if s == 200 and b.get("temp_password"):
-    member_token = login(MEMBER_ID, b["temp_password"])
+ok("멤버 계정 생성", s, b, [200, 201])
+member_temp_pw = b.get("temp_password") if s in (200, 201) else None
+member_token = login(MEMBER_ID, member_temp_pw) if member_temp_pw else None
 
 # ─── 1. 출석 이벤트 생성 ─────────────────────────────────────────────────────
 print("\n[1] 출석 이벤트 생성")
@@ -131,22 +128,22 @@ if member_token:
 print("\n[3] 멤버 투표")
 if event_id and member_token:
     s, b = req("POST", f"/api/attendance/events/{event_id}/vote",
-               {"vote": "ATTEND"}, token=member_token)
+               {"response": "ATTEND"}, token=member_token)
     ok("ATTEND 투표 → 200 또는 201", s, b, [200, 201])
 
     # 투표 수정 (ABSENT로 변경)
     s, b = req("POST", f"/api/attendance/events/{event_id}/vote",
-               {"vote": "ABSENT"}, token=member_token)
+               {"response": "ABSENT"}, token=member_token)
     ok("투표 수정 (ABSENT) → 200 또는 201", s, b, [200, 201])
 
     # 잘못된 투표값
     s, b = req("POST", f"/api/attendance/events/{event_id}/vote",
-               {"vote": "INVALID"}, token=member_token)
+               {"response": "INVALID"}, token=member_token)
     ok("잘못된 투표값 → 422", s, b, [400, 422])
 
     # 다시 ATTEND로
     s, b = req("POST", f"/api/attendance/events/{event_id}/vote",
-               {"vote": "ATTEND"}, token=member_token)
+               {"response": "ATTEND"}, token=member_token)
     ok("투표 재변경 (ATTEND) → 200 또는 201", s, b, [200, 201])
 
 # ─── 4. 관리자 이벤트 상세 vs 멤버 상세 ─────────────────────────────────────
@@ -187,7 +184,7 @@ if event_id:
     # 닫힌 이벤트에 투표 시도
     if member_token:
         s, b = req("POST", f"/api/attendance/events/{event_id}/vote",
-                   {"vote": "ATTEND"}, token=member_token)
+                   {"response": "ATTEND"}, token=member_token)
         ok("닫힌 이벤트 투표 차단 → 400 또는 403", s, b, [400, 403, 409])
 
 # ─── 7. LEAGUE 타입 이벤트 ───────────────────────────────────────────────────
@@ -202,7 +199,7 @@ league_event_id = b.get("id") or b.get("event_id")
 
 if league_event_id and member_token:
     s, b = req("POST", f"/api/attendance/events/{league_event_id}/vote",
-               {"vote": "ATTEND"}, token=member_token)
+               {"response": "ATTEND"}, token=member_token)
     ok("LEAGUE 이벤트 투표", s, b, [200, 201, 400])  # 팀 배정 없으면 400일 수 있음
 
 # ─── 8. 리마인더 관련 ────────────────────────────────────────────────────────

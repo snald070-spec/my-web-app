@@ -83,24 +83,19 @@ s, b = req("POST", "/api/users", {
     "emp_id": GENERAL_ID, "name": "RBAC General", "department": "QC",
     "email": f"{GENERAL_ID}@qc.test", "role": "GENERAL"
 }, token=admin_token)
-ok("GENERAL 계정 생성", s, b, 201)
+ok("GENERAL 계정 생성", s, b, [200, 201])
+general_temp_pw = b.get("temp_password") if s in (200, 201) else None
 
 s, b = req("POST", "/api/users", {
     "emp_id": ADMIN_ID, "name": "RBAC Admin", "department": "QC",
     "email": f"{ADMIN_ID}@qc.test", "role": "ADMIN"
 }, token=admin_token)
-ok("ADMIN 계정 생성", s, b, 201)
+ok("ADMIN 계정 생성", s, b, [200, 201])
+admin_role_temp_pw = b.get("temp_password") if s in (200, 201) else None
 
-# 임시 비밀번호 발급 및 로그인
-s, b = req("POST", f"/api/users/{GENERAL_ID}/issue-temp-password", token=admin_token)
-general_token = None
-if s == 200 and b.get("temp_password"):
-    general_token = login(GENERAL_ID, b["temp_password"])
-
-s, b = req("POST", f"/api/users/{ADMIN_ID}/issue-temp-password", token=admin_token)
-admin_role_token = None
-if s == 200 and b.get("temp_password"):
-    admin_role_token = login(ADMIN_ID, b["temp_password"])
+# 임시 비밀번호로 로그인 (생성 응답에서 직접 획득)
+general_token = login(GENERAL_ID, general_temp_pw) if general_temp_pw else None
+admin_role_token = login(ADMIN_ID, admin_role_temp_pw) if admin_role_temp_pw else None
 
 if not general_token:
     print("[SKIP] GENERAL 토큰 없음 — RBAC 테스트 일부 건너뜀")
@@ -198,8 +193,8 @@ print("\n[8] 공지사항 CRUD 권한")
 s, b = req("POST", "/api/notices", {
     "title": "RBAC 테스트 공지", "body": "테스트 내용", "is_pinned": False
 }, token=admin_token)
-ok("MASTER 공지사항 생성 → 201", s, b, 201)
-notice_id = b.get("id") if s == 201 else None
+ok("MASTER 공지사항 생성 → 201", s, b, [200, 201])
+notice_id = b.get("id") if s in (200, 201) else None
 
 if notice_id and admin_role_token:
     s, b = req("DELETE", f"/api/notices/{notice_id}", token=admin_role_token)

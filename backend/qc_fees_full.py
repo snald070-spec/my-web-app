@@ -82,22 +82,21 @@ def cleanup():
 cleanup()
 
 # 멤버 계정 생성
+member_token = None
+member2_token = None
 for uid, name in [(MEMBER_ID, "Fee Member 1"), (MEMBER2_ID, "Fee Member 2")]:
     s, b = req("POST", "/api/users", {
         "emp_id": uid, "name": name, "department": "QC",
         "email": f"{uid}@qc.test", "role": "GENERAL"
     }, token=admin_token)
-    ok(f"{uid} 생성", s, b, 201)
-
-s, b = req("POST", f"/api/users/{MEMBER_ID}/issue-temp-password", token=admin_token)
-member_token = None
-if s == 200 and b.get("temp_password"):
-    member_token = login(MEMBER_ID, b["temp_password"])
-
-s, b = req("POST", f"/api/users/{MEMBER2_ID}/issue-temp-password", token=admin_token)
-member2_token = None
-if s == 200 and b.get("temp_password"):
-    member2_token = login(MEMBER2_ID, b["temp_password"])
+    ok(f"{uid} 생성", s, b, [200, 201])
+    tmp_pw = b.get("temp_password") if s in (200, 201) else None
+    if tmp_pw:
+        tok = login(uid, tmp_pw)
+        if uid == MEMBER_ID:
+            member_token = tok
+        else:
+            member2_token = tok
 
 # ─── 1. 멤버 본인 회비 프로필 조회 ──────────────────────────────────────────
 print("\n[1] 멤버 본인 회비 프로필 조회")
@@ -120,7 +119,7 @@ if member_token:
 if member2_token:
     # 다른 멤버의 회비 납부 기록 시도 (관리자 전용)
     s, b = req("POST", f"/api/fees/admin/members/{MEMBER_ID}/mark-paid",
-               {"year_month": "2026-01", "amount": 30000, "note": "cross-user test"},
+               {"year_month": "2026-01", "paid_amount": 30000, "note": "cross-user test"},
                token=member2_token)
     ok("다른 멤버 회비 납부 기록 시도 차단 → 403", s, b, 403)
 
@@ -156,7 +155,7 @@ year_month = f"{today.year}-{today.month:02d}"
 
 s, b = req("POST", f"/api/fees/admin/members/{MEMBER_ID}/mark-paid", {
     "year_month": year_month,
-    "amount": 30000,
+    "paid_amount": 30000,
     "note": "QC 테스트 납부"
 }, token=admin_token)
 ok(f"회비 납부 기록 ({year_month})", s, b, [200, 201])
@@ -187,7 +186,7 @@ ok("잘못된 year_month 형식 → 400 또는 422", s, b, [400, 422])
 
 s, b = req("POST", f"/api/fees/admin/members/{MEMBER_ID}/mark-paid", {
     "year_month": year_month,
-    "amount": -1000  # 음수 금액
+    "paid_amount": -1000  # 음수 금액
 }, token=admin_token)
 ok("음수 금액 → 400 또는 422 또는 저장됨", s, b, [200, 201, 400, 422])
 

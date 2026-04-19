@@ -59,7 +59,7 @@ def list_notices(
     return paginate(q, skip, limit, _serialize_notice)
 
 
-@router.post("")
+@router.post("", status_code=201)
 def create_notice(
     body: NoticeCreate,
     admin_user: models.User = Depends(require_admin),
