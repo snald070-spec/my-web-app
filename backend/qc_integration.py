@@ -70,7 +70,7 @@ def login(emp_id, password):
 
 
 def future_dt(hours=1):
-    dt = datetime.now() + timedelta(hours=hours)
+    dt = datetime.utcnow() + timedelta(hours=hours)
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -143,8 +143,8 @@ s, b = req("POST", "/api/attendance/events", {
     "title": "통합테스트 출석 이벤트",
     "event_date": event_date,
     "vote_type": "REST",
-    "vote_open_at": (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S"),
-    "vote_close_at": (datetime.now() + timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%S"),
+    "vote_open_at": (datetime.utcnow() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S"),
+    "vote_close_at": (datetime.utcnow() + timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%S"),
 }, token=admin_token)
 ok("출석 이벤트 생성 → 200/201", s, b, [200, 201])
 att_event_id = b.get("id") or b.get("event_id")
