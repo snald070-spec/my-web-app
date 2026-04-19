@@ -19,6 +19,8 @@ class AttendanceEventCreate(BaseModel):
     note: str | None = None
     vote_type: str = "REST"
     target_team: str | None = None
+    vote_open_at: datetime | None = None
+    vote_close_at: datetime | None = None
 
 
 class AttendanceVoteBody(BaseModel):
@@ -197,9 +199,12 @@ def create_event(
     if vote_type == models.AttendanceVoteTypeEnum.REST:
         target_team = None
 
-    # Rest vote policy: weekly Thu 12:00 start -> Sun 12:00 end.
-    if vote_type == models.AttendanceVoteTypeEnum.REST:
-        # Use the week of event_date as 기준. Thursday=3, Sunday=6
+    # Explicit admin override takes priority over auto-calculated window.
+    if body.vote_open_at is not None and body.vote_close_at is not None:
+        vote_start_at = body.vote_open_at
+        vote_end_at = body.vote_close_at
+    elif vote_type == models.AttendanceVoteTypeEnum.REST:
+        # Rest vote policy: weekly Thu 12:00 start -> Sun 12:00 end.
         weekday = body.event_date.weekday()
         thursday = body.event_date + timedelta(days=(3 - weekday))
         sunday = thursday + timedelta(days=3)

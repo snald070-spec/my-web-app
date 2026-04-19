@@ -109,7 +109,7 @@ s, b = req("POST", "/api/attendance/events", {
     "title": "QC 테스트 이벤트 REST",
     "event_date": event_date,
     "vote_type": "REST",
-    "vote_open_at": future_dt(hours=0),
+    "vote_open_at": past_dt(days=1),
     "vote_close_at": future_dt(days=6),
 }, token=admin_token)
 ok("REST 이벤트 생성 → 201 또는 200", s, b, [200, 201])
@@ -193,6 +193,9 @@ s, b = req("POST", "/api/attendance/events", {
     "title": "QC 테스트 이벤트 LEAGUE",
     "event_date": (date.today() + timedelta(days=14)).isoformat(),
     "vote_type": "LEAGUE",
+    "target_team": "A",
+    "vote_open_at": past_dt(days=1),
+    "vote_close_at": future_dt(days=13),
 }, token=admin_token)
 ok("LEAGUE 이벤트 생성", s, b, [200, 201])
 league_event_id = b.get("id") or b.get("event_id")

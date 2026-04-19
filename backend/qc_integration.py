@@ -143,6 +143,8 @@ s, b = req("POST", "/api/attendance/events", {
     "title": "통합테스트 출석 이벤트",
     "event_date": event_date,
     "vote_type": "REST",
+    "vote_open_at": (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S"),
+    "vote_close_at": (datetime.now() + timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%S"),
 }, token=admin_token)
 ok("출석 이벤트 생성 → 200/201", s, b, [200, 201])
 att_event_id = b.get("id") or b.get("event_id")
@@ -239,7 +241,7 @@ ok("공지사항 키워드 검색 → 200", s, b, 200)
 
 # 수정 (관리자만 가능)
 if notice_id:
-    s, b = req("PUT", f"/api/notices/{notice_id}", {
+    s, b = req("PATCH", f"/api/notices/{notice_id}", {
         "title": "통합테스트 공지사항 (수정됨)",
         "body": "수정된 공지 내용입니다.",
         "is_pinned": False
@@ -248,7 +250,7 @@ if notice_id:
 
     # 일반 멤버 수정 시도 차단
     if t0:
-        s, b = req("PUT", f"/api/notices/{notice_id}", {
+        s, b = req("PATCH", f"/api/notices/{notice_id}", {
             "title": "멤버가 수정 시도",
             "body": "차단되어야 함",
             "is_pinned": False
