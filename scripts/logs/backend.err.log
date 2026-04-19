@@ -1,6 +1,0 @@
-INFO:     Started server process [3068]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-2026-04-11 19:04:44 [INFO] routers.users: Admin role update: actor=master target=test001 role=RoleEnum.ADMIN
-2026-04-11 19:04:46 [INFO] routers.users: Admin role update: actor=master target=test001 role=RoleEnum.GENERAL
