@@ -17,14 +17,22 @@ jobs:
           script: |
             set -e
 
-            # 백엔드 업데이트
+            # 백엔드 업데이트 (.env는 서버 전용이므로 보존)
             cd /home/ubuntu/draw_phase2_backend
-            git pull origin main
+            cp backend/.env /tmp/draw_backend.env.bak 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/draw_backend.env.bak backend/.env 2>/dev/null || true
+            rm -f /tmp/draw_backend.env.bak
             sudo systemctl restart draw-backend
 
-            # 프론트엔드 업데이트
+            # 프론트엔드 업데이트 (.env 보존)
             cd /home/ubuntu/my-web-app
-            git pull origin main
+            cp frontend/.env /tmp/draw_frontend.env.bak 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/draw_frontend.env.bak frontend/.env 2>/dev/null || true
+            rm -f /tmp/draw_frontend.env.bak
             sudo systemctl restart draw-frontend
 
             echo "✅ 배포 완료"
