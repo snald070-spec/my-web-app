@@ -170,7 +170,7 @@ if att_event_id:
                token=admin_token)
     ok("관리자 투표 집계 조회 → 200", s, b, 200)
     if s == 200 and voted_count > 0:
-        attend_count = b.get("attend_count", b.get("attend", 0))
+        attend_count = b.get("event", {}).get("counts", {}).get("ATTEND", 0)
         ok(f"attend_count >= {voted_count}", attend_count >= voted_count, True, True)
 
     # 멤버 본인 요약 확인

@@ -164,7 +164,7 @@ print("\n[5] 출석 통계 검증")
 if event_id:
     s, b = req("GET", f"/api/attendance/admin/events/{event_id}/vote-detail", token=admin_token)
     if s == 200:
-        attend_count = b.get("attend_count", b.get("attend", 0))
+        attend_count = b.get("event", {}).get("counts", {}).get("ATTEND", None)
         ok("출석 통계에 attend_count 존재", attend_count is not None, True, True)
 
 s, b = req("GET", "/api/attendance/admin/member-summary", token=admin_token)
@@ -203,7 +203,7 @@ league_event_id = b.get("id") or b.get("event_id")
 if league_event_id and member_token:
     s, b = req("POST", f"/api/attendance/events/{league_event_id}/vote",
                {"response": "ATTEND"}, token=member_token)
-    ok("LEAGUE 이벤트 투표", s, b, [200, 201, 400])  # 팀 배정 없으면 400일 수 있음
+    ok("LEAGUE 이벤트 투표", s, b, [200, 201, 400, 403])  # 팀 미배정 멤버는 403
 
 # ─── 8. 리마인더 관련 ────────────────────────────────────────────────────────
 print("\n[8] 리마인더 조회")

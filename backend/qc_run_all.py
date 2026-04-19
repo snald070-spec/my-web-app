@@ -5,8 +5,21 @@ QC 마스터 러너: 모든 QC 스크립트를 순서대로 실행하고 통합 
   python qc_run_all.py
   python qc_run_all.py --stop-on-fail   # 첫 실패 시 중단
 """
-import subprocess, sys, time, argparse
+import subprocess, sys, time, argparse, urllib.request, urllib.error
 from pathlib import Path
+
+
+def wait_for_server(url: str = "http://127.0.0.1:8000/health", timeout: int = 30) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=2) as r:
+                if r.status < 500:
+                    return True
+        except Exception:
+            pass
+        time.sleep(1)
+    return False
 
 SCRIPTS = [
     ("인증 엣지 케이스",    "qc_auth_edge_cases.py"),
@@ -50,6 +63,13 @@ def main():
     print("\n" + "=" * WIDTH)
     print("  QC 전체 실행 시작")
     print("=" * WIDTH)
+
+    print("  서버 응답 대기 중...", end="", flush=True)
+    if not wait_for_server():
+        print(" [FAIL]")
+        print("[FATAL] 서버(http://127.0.0.1:8000)에 연결할 수 없습니다.")
+        sys.exit(1)
+    print(" [OK]")
 
     results = []
     total_start = time.monotonic()
