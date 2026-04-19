@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from starlette.requests import Request
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect, text
@@ -27,6 +27,10 @@ from logging_config import setup_logging
 load_dotenv()
 setup_logging()
 logger = logging.getLogger(__name__)
+
+APP_ENV = (os.environ.get("APP_ENV") or "development").strip().lower()
+_is_production = APP_ENV in {"prod", "production"}
+_CSP_CONNECT_SRC = os.environ.get("CSP_CONNECT_SRC", "")
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
@@ -92,6 +96,9 @@ app = FastAPI(
     title="Draw Basketball Team API",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 
@@ -152,6 +159,20 @@ def _clear_login_failures(bucket_key: str) -> None:
         _login_attempts.pop(bucket_key, None)
 
 
+_API_RATE_LIMIT = int(os.environ.get("API_RATE_LIMIT", "300"))  # requests per IP per minute
+_API_RATE_WINDOW = 60
+_api_rate_lock = threading.Lock()
+_api_rate_buckets: dict[str, dict] = {}
+_API_SKIP_PATHS = {"/health", "/"}
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    return forwarded_for.split(",")[0].strip() if forwarded_for else (
+        request.client.host if request.client else "unknown"
+    )
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -159,15 +180,68 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Cache-Control"] = "no-store"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=(), "
+        "usb=(), bluetooth=(), accelerometer=(), gyroscope=()"
+    )
+    connect_src = f"'self' {_CSP_CONNECT_SRC}".strip()
+    response.headers["Content-Security-Policy"] = (
+        f"default-src 'self'; "
+        f"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        f"style-src 'self' 'unsafe-inline'; "
+        f"img-src 'self' data: blob: https:; "
+        f"connect-src {connect_src}; "
+        f"font-src 'self' data:; "
+        f"object-src 'none'; "
+        f"base-uri 'self'; "
+        f"form-action 'self'; "
+        f"frame-ancestors 'none';"
+    )
+    if _is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
     return response
+
+
+@app.middleware("http")
+async def global_rate_limit(request: Request, call_next):
+    if request.url.path in _API_SKIP_PATHS or request.url.path.startswith("/assets"):
+        return await call_next(request)
+
+    ip = _get_client_ip(request)
+    now = time.time()
+
+    with _api_rate_lock:
+        bucket = _api_rate_buckets.setdefault(ip, {"count": 0, "window_start": now})
+        if now - float(bucket["window_start"]) > _API_RATE_WINDOW:
+            bucket["count"] = 0
+            bucket["window_start"] = now
+        bucket["count"] = int(bucket["count"]) + 1
+        count = int(bucket["count"])
+        if count == 1 and len(_api_rate_buckets) > 10000:
+            cutoff = now - _API_RATE_WINDOW * 2
+            stale = [k for k, v in _api_rate_buckets.items() if float(v["window_start"]) < cutoff]
+            for k in stale:
+                del _api_rate_buckets[k]
+
+    if count > _API_RATE_LIMIT:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Please slow down."},
+            headers={"Retry-After": str(_API_RATE_WINDOW)},
+        )
+
+    return await call_next(request)
+
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_parse_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    max_age=600,
 )
 
 # ── Feature routers ───────────────────────────────────────────────────────────
