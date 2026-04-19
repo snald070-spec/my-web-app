@@ -102,18 +102,37 @@ app = FastAPI(
 )
 
 
+_CORS_ALWAYS_ALLOWED = {
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost",
+    "https://localhost",
+    "capacitor://localhost",
+    "ionic://localhost",
+}
+
+
 def _parse_cors_origins() -> list[str]:
+    origins: set[str] = set(_CORS_ALWAYS_ALLOWED)
+
+    # Env-specified origins (comma-separated)
     raw = (os.environ.get("CORS_ALLOW_ORIGINS") or "").strip()
-    if raw:
-        return [origin.strip() for origin in raw.split(",") if origin.strip()]
-    return [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost",
-        "https://localhost",
-        "capacitor://localhost",
-        "ionic://localhost",
-    ]
+    for o in raw.split(","):
+        o = o.strip()
+        if o:
+            origins.add(o)
+
+    # Auto-include SERVER_HOST so public IP is never accidentally dropped
+    server_host = (os.environ.get("SERVER_HOST") or "").strip()
+    if server_host:
+        origins.add(f"http://{server_host}:5173")
+        origins.add(f"https://{server_host}:5173")
+        origins.add(f"http://{server_host}")
+        origins.add(f"https://{server_host}")
+
+    origins_list = sorted(origins)
+    logger.info("CORS allowed origins: %s", origins_list)
+    return origins_list
 
 
 LOGIN_MAX_ATTEMPTS = int(os.environ.get("LOGIN_MAX_ATTEMPTS", "7"))
@@ -243,6 +262,12 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
     max_age=600,
 )
+
+# ── Health check ─────────────────────────────────────────────────────────────
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 
 # ── Feature routers ───────────────────────────────────────────────────────────
 app.include_router(dashboard.router)

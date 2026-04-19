@@ -17,22 +17,75 @@ jobs:
           script: |
             set -e
 
-            # 백엔드 업데이트 (.env는 서버 전용이므로 보존)
+            # ── 백엔드 업데이트 (.env는 서버 전용이므로 보존) ──────────────────
             cd /home/ubuntu/draw_phase2_backend
             cp backend/.env /tmp/draw_backend.env.bak 2>/dev/null || true
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/draw_backend.env.bak backend/.env 2>/dev/null || true
             rm -f /tmp/draw_backend.env.bak
+
+            # SERVER_HOST 가 .env에 없으면 자동 추가 (CORS 보호)
+            if ! grep -q "^SERVER_HOST=" backend/.env 2>/dev/null; then
+              echo "SERVER_HOST=${{ secrets.SERVER_HOST }}" >> backend/.env
+              echo "[deploy] SERVER_HOST 추가됨"
+            fi
+
+            # CORS_ALLOW_ORIGINS에 PUBLIC_IP가 없으면 자동 추가
+            PUBLIC_IP="${{ secrets.SERVER_HOST }}"
+            if ! grep -q "${PUBLIC_IP}:5173" backend/.env 2>/dev/null; then
+              sed -i "/^CORS_ALLOW_ORIGINS=/ s|$|,http://${PUBLIC_IP}:5173|" backend/.env
+              echo "[deploy] CORS에 ${PUBLIC_IP}:5173 추가됨"
+            fi
+
             sudo systemctl restart draw-backend
 
-            # 프론트엔드 업데이트 (.env 보존)
+            # 백엔드가 정상 응답할 때까지 최대 30초 대기
+            echo "[deploy] 백엔드 시작 대기 중..."
+            for i in $(seq 1 30); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/health 2>/dev/null || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "[deploy] 백엔드 정상 응답 확인 (${i}초)"
+                break
+              fi
+              if [ "$i" = "30" ]; then
+                echo "[deploy] 백엔드 응답 없음 — 로그 확인 필요"
+                journalctl -u draw-backend -n 20 --no-pager
+                exit 1
+              fi
+              sleep 1
+            done
+
+            # ── 프론트엔드 업데이트 (.env 보존) ───────────────────────────────
             cd /home/ubuntu/my-web-app
             cp frontend/.env /tmp/draw_frontend.env.bak 2>/dev/null || true
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/draw_frontend.env.bak frontend/.env 2>/dev/null || true
             rm -f /tmp/draw_frontend.env.bak
+
+            # VITE_API_BASE_URL이 .env에 없으면 자동 추가
+            if ! grep -q "^VITE_API_BASE_URL=" frontend/.env 2>/dev/null; then
+              echo "VITE_API_BASE_URL=http://${{ secrets.SERVER_HOST }}:8000" >> frontend/.env
+              echo "[deploy] VITE_API_BASE_URL 추가됨"
+            fi
+
             sudo systemctl restart draw-frontend
+
+            # 프론트엔드 응답 대기 (최대 30초)
+            echo "[deploy] 프론트엔드 시작 대기 중..."
+            for i in $(seq 1 30); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173/ 2>/dev/null || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "[deploy] 프론트엔드 정상 응답 확인 (${i}초)"
+                break
+              fi
+              if [ "$i" = "30" ]; then
+                echo "[deploy] 프론트엔드 응답 없음 — 로그 확인 필요"
+                journalctl -u draw-frontend -n 20 --no-pager
+                exit 1
+              fi
+              sleep 1
+            done
 
             echo "✅ 배포 완료"
