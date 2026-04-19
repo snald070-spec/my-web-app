@@ -367,6 +367,8 @@ def change_password(
     db: Session = Depends(get_db),
 ):
     """Change current user's password. Requires old password for verification."""
+    if models.canonical_role(current_user.role) == models.RoleEnum.MASTER:
+        raise HTTPException(status_code=403, detail="Master account password is locked. Contact the system administrator.")
     if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
     is_valid, reason = validate_password_policy(body.new_password)

@@ -630,8 +630,8 @@ def issue_temp_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    if models.canonical_role(user.role) == models.RoleEnum.MASTER and not has_master_access(_admin):
-        raise HTTPException(status_code=403, detail="마스터 계정은 마스터만 초기화할 수 있습니다.")
+    if models.canonical_role(user.role) == models.RoleEnum.MASTER:
+        raise HTTPException(status_code=403, detail="Master account password cannot be reset via this endpoint.")
 
     if models.canonical_role(user.role) in (models.RoleEnum.GENERAL, models.RoleEnum.STUDENT) and not _is_phone_id(user.emp_id):
         raise HTTPException(status_code=400, detail="GENERAL/STUDENT account ID must be a phone number (digits only).")
