@@ -17,13 +17,15 @@ jobs:
           script: |
             set -e
 
-            # ── 백엔드 업데이트 (.env는 서버 전용이므로 보존) ──────────────────
+            # ── 백엔드 업데이트 (.env, app.db는 서버 전용이므로 보존) ───────────
             cd /home/ubuntu/draw_phase2_backend
             cp backend/.env /tmp/draw_backend.env.bak 2>/dev/null || true
+            cp backend/app.db /tmp/draw_backend.db.bak 2>/dev/null || true
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/draw_backend.env.bak backend/.env 2>/dev/null || true
-            rm -f /tmp/draw_backend.env.bak
+            cp /tmp/draw_backend.db.bak backend/app.db 2>/dev/null || true
+            rm -f /tmp/draw_backend.env.bak /tmp/draw_backend.db.bak
 
             # SERVER_HOST 가 .env에 없으면 자동 추가 (CORS 보호)
             if ! grep -q "^SERVER_HOST=" backend/.env 2>/dev/null; then

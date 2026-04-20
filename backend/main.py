@@ -19,7 +19,7 @@ import models
 from database import engine, get_db, Base
 from auth import (
     verify_password, create_access_token, hash_password,
-    get_current_user, require_admin, generate_temp_password, validate_password_policy,
+    get_current_user, require_admin, validate_password_policy,
 )
 from routers import dashboard, users, notices, fees, attendance, league
 from logging_config import setup_logging
@@ -72,20 +72,20 @@ async def lifespan(app: FastAPI):
             db.commit()
 
         if db.query(models.User).count() == 0:
-            temp_pw = generate_temp_password()
+            init_pw = os.environ.get("MASTER_INIT_PASSWORD", "1234")
             admin = models.User(
-                emp_id          = "admin",
-                name            = "admin",
+                emp_id          = "master",
+                name            = "master",
                 department      = "IT",
                 email           = "admin@example.com",
-                hashed_password = hash_password(temp_pw),
+                hashed_password = hash_password(init_pw),
                 role            = models.RoleEnum.MASTER,
-                is_first_login  = True,
-                temp_password   = temp_pw,
+                is_first_login  = False,
+                temp_password   = None,
             )
             db.add(admin)
             db.commit()
-            logger.info("✅ Seeded master account. emp_id=admin  temp_password=%s", temp_pw)
+            logger.info("✅ Seeded master account. emp_id=master")
     finally:
         db.close()
     yield
