@@ -1,4 +1,6 @@
-fastapi
+fastapi[all]
+# fastapi[all]에는 swagger, openapi, docs, pydantic, uvicorn 등 문서화 및 개발에 필요한 모든 의존성이 포함됨
+# 기존 fastapi, pydantic, uvicorn 등 중복 항목은 유지해도 무방하나, [all] 옵션으로 통합 가능
 sqlalchemy
 python-dotenv
 python-jose

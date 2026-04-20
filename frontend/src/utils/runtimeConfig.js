@@ -10,8 +10,8 @@ export function getApiBaseUrl() {
   const isProd = Boolean(import.meta.env.PROD);
   const envValue = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || "");
   if (envValue) {
-    if (isProd && !envValue.startsWith("https://")) {
-      throw new Error("Production builds require VITE_API_BASE_URL to use HTTPS.");
+    if (isProd && !(envValue.startsWith("https://") || envValue.startsWith("http://"))) {
+      throw new Error("Production builds require VITE_API_BASE_URL to use HTTP or HTTPS.");
     }
     return envValue;
   }
