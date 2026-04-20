@@ -36,6 +36,7 @@ export default function LoginPage() {
   const [pw, setPw]                   = useState("");
   const [showPw, setShowPw]           = useState(false);
   const [err, setErr]                 = useState("");
+  const [loading, setLoading]         = useState(false);
 
   // Forced password change modal (first login)
   const [currentPw, setCurrentPw]       = useState("");
@@ -46,12 +47,14 @@ export default function LoginPage() {
   const showChangePwModal = !!(user?.is_first_login);
 
   async function handleLogin() {
+    if (loading) return;
     setErr("");
     const normalizedId = nameId.trim();
     if (!normalizedId || !pw) {
       setErr("이름과 비밀번호를 입력해주세요.");
       return;
     }
+    setLoading(true);
     try {
       const data = await login(normalizedId, pw);
       if (data.is_first_login) {
@@ -61,8 +64,21 @@ export default function LoginPage() {
         sessionStorage.removeItem("loginRedirect");
         window.location.replace(redirect || "/");
       }
-    } catch {
-      setErr("비밀번호가 올바르지 않습니다. 다시 시도해주세요.");
+    } catch (e) {
+      const status = e.response?.status;
+      if (status === 429) {
+        setErr("로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.");
+      } else if (status === 403) {
+        setErr("비활성화된 계정입니다. 관리자에게 문의하세요.");
+      } else if (status === 401) {
+        setErr("아이디 또는 비밀번호가 올바르지 않습니다.");
+      } else if (!e.response) {
+        setErr("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+      } else {
+        setErr("로그인에 실패했습니다. 다시 시도해주세요.");
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -169,9 +185,12 @@ export default function LoginPage() {
         </div>
 
         {err && <p className="text-red-500 text-sm mb-2">{err}</p>}
-        <button className="btn-primary btn w-full py-2.5 rounded-xl mt-2"
-          onClick={handleLogin}>
-          로그인
+        <button
+          className="btn-primary btn w-full py-2.5 rounded-xl mt-2 disabled:opacity-60"
+          onClick={handleLogin}
+          disabled={loading}
+        >
+          {loading ? "로그인 중..." : "로그인"}
         </button>
 
         <p className="mt-3 text-xs text-gray-400">

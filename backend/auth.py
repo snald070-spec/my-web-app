@@ -100,6 +100,8 @@ def get_current_user(
     user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
     if user is None:
         raise exc
+    if getattr(user, "is_resigned", False):
+        raise exc  # treat deactivated account same as invalid token → triggers frontend logout
     return user
 
 

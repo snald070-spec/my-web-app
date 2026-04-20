@@ -3,6 +3,7 @@ import { getApiBaseUrl } from "./utils/runtimeConfig";
 
 const api = axios.create({
   baseURL: getApiBaseUrl(),
+  timeout: 15000,
 });
 
 // Attach JWT token to every request
@@ -12,15 +13,49 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-logout on 401
+let _isLoggingOut = false;
+
+function _doLogout() {
+  if (_isLoggingOut) return;
+  _isLoggingOut = true;
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.href = "/";
+}
+
+// On 401: try token refresh once, then logout if that also fails
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/";
+  async (err) => {
+    const original = err.config;
+    const status = err.response?.status;
+
+    // Skip refresh loop for auth endpoints themselves
+    const isAuthEndpoint = original?.url?.includes("/auth/");
+    if (status === 401 && !original?._retried && !isAuthEndpoint) {
+      original._retried = true;
+      try {
+        const { data } = await api.post("/api/auth/refresh");
+        localStorage.setItem("token", data.access_token);
+        if (data.expires_in) {
+          localStorage.setItem(
+            "tokenExpiresAt",
+            String(Date.now() + data.expires_in * 1000)
+          );
+        }
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${data.access_token}`;
+        return api(original);
+      } catch {
+        _doLogout();
+        return Promise.reject(err);
+      }
     }
+
+    if (status === 401 && !isAuthEndpoint) {
+      _doLogout();
+    }
+
     return Promise.reject(err);
   }
 );

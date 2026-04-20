@@ -20,6 +20,7 @@ from database import engine, get_db, Base
 from auth import (
     verify_password, create_access_token, hash_password,
     get_current_user, require_admin, validate_password_policy,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from routers import dashboard, users, notices, fees, attendance, league
 from logging_config import setup_logging
@@ -320,6 +321,7 @@ def login(
     return {
         "access_token":  token,
         "token_type":    "bearer",
+        "expires_in":    ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "emp_id":        user.emp_id,
         "name":          user.emp_id,
         "department":    user.department,
@@ -400,6 +402,26 @@ def change_password(
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error.")
     return {"message": "Password changed successfully."}
+
+
+@app.post("/api/auth/refresh")
+def refresh_token(current_user: models.User = Depends(get_current_user)):
+    """Issue a fresh JWT for a still-valid token (proactive client-side renewal)."""
+    token = create_access_token({"sub": current_user.emp_id})
+    role = models.canonical_role(current_user.role)
+    return {
+        "access_token":  token,
+        "token_type":    "bearer",
+        "expires_in":    ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "emp_id":        current_user.emp_id,
+        "name":          current_user.emp_id,
+        "department":    current_user.department,
+        "division":      current_user.division,
+        "email":         current_user.email,
+        "role":          role.value,
+        "is_first_login": current_user.is_first_login,
+        "is_vip":        current_user.is_vip,
+    }
 
 
 @app.post("/api/auth/skip-password-change")
