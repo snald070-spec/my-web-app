@@ -6,9 +6,10 @@ QC: Authentication Edge Cases
 - 잘못된/만료된 토큰 처리
 - 로그인 Rate Limiting
 """
+import os
 import urllib.request, urllib.error, urllib.parse, json, sys, time
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 PASS_COUNT = 0
 FAIL_COUNT = 0
 FAILURES = []

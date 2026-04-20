@@ -11,18 +11,15 @@ Checks:
 """
 import json
 import sys
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE_URL  = "http://127.0.0.1:8000"
-# Accounts assumed to exist in current DB (not first-login, not resigned)
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 MASTER_ID = "master"
 MASTER_PW = "1234"
-MEMBER_ID = "test001"
-MEMBER_PW = "1234"
-
-# An emp_id that does not exist (for throttle test)
+MEMBER_ID = "qc_sec_member"   # self-created, self-cleaned
 FAKE_ID   = "_no_such_user_"
 FAKE_PW   = "wrongpw"
 
@@ -67,6 +64,25 @@ def login(uid, pw):
 def run():
     print("=== Security RBAC QC ===")
 
+    # ── 0. Setup: create self-sufficient test member ──────────────────────────
+    master_hdr = {"Authorization": ""}  # filled after master login below
+    ah_pre = login(MASTER_ID, MASTER_PW)
+    master_hdr = ah_pre  # re-used in setup
+
+    # Clean up any leftover
+    req("DELETE", f"/api/users/{MEMBER_ID}", headers=master_hdr)
+    s, b = req("POST", "/api/users", data={
+        "emp_id": MEMBER_ID, "name": "Sec Member", "department": "QC",
+        "email": f"{MEMBER_ID}@qc.test", "role": "GENERAL",
+    }, headers=master_hdr)
+    ok(s in (200, 201), f"Setup: create {MEMBER_ID}")
+    temp_pw = (b or {}).get("temp_password") if s in (200, 201) else None
+    if not temp_pw:
+        print(f"[SKIP] Could not create member {MEMBER_ID} — aborting")
+        return
+
+    MEMBER_PW = temp_pw  # noqa: F841  (used via closure below)
+
     # ── 1. Unauthenticated → 401 ──────────────────────────────────────────────
     print("\n[1] Unauthenticated access")
     s, _ = req("GET", "/api/users")
@@ -80,7 +96,7 @@ def run():
 
     # ── 2. Member cannot reach admin endpoints → 403 ─────────────────────────
     print("\n[2] Member blocked from admin endpoints")
-    mh = login(MEMBER_ID, MEMBER_PW)
+    mh = login(MEMBER_ID, temp_pw)
 
     s, _ = req("GET", "/api/users", headers=mh)
     ok(s == 403, "Member GET /api/users → 403")
@@ -137,6 +153,9 @@ def run():
             print(f"    → throttled after {i+1} attempt(s)")
             break
     ok(throttled, "Repeated bad login → 429 throttle triggered")
+
+    # ── Cleanup ───────────────────────────────────────────────────────────────
+    req("DELETE", f"/api/users/{MEMBER_ID}", headers=ah_pre)
 
     print("\n=== Security RBAC QC Passed ===")
 

@@ -8,10 +8,11 @@ QC: 출석 관리 전체 플로우
 - REST vs LEAGUE 투표 타입
 - 관리자 이벤트 상세 vs 멤버 이벤트 상세 차이
 """
+import os
 import urllib.request, urllib.error, urllib.parse, json, sys
 from datetime import datetime, timedelta, date
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 PASS_COUNT = 0
 FAIL_COUNT = 0
 FAILURES = []

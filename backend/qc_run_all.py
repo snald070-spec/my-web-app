@@ -5,11 +5,14 @@ QC 마스터 러너: 모든 QC 스크립트를 순서대로 실행하고 통합 
   python qc_run_all.py
   python qc_run_all.py --stop-on-fail   # 첫 실패 시 중단
 """
-import subprocess, sys, time, argparse, urllib.request, urllib.error
+import subprocess, sys, time, argparse, urllib.request, urllib.error, os
 from pathlib import Path
 
+_BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 
-def wait_for_server(url: str = "http://127.0.0.1:8000/", timeout: int = 30) -> bool:
+
+def wait_for_server(url: str = None, timeout: int = 30) -> bool:
+    url = url or f"{_BASE_URL}/"
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
@@ -23,12 +26,14 @@ def wait_for_server(url: str = "http://127.0.0.1:8000/", timeout: int = 30) -> b
     return False
 
 SCRIPTS = [
-    ("인증 엣지 케이스",    "qc_auth_edge_cases.py"),
-    ("API 입력 검증",       "qc_api_validation.py"),
-    ("RBAC 전체 검증",      "qc_rbac_full.py"),
-    ("출석 관리 전체 플로우","qc_attendance_full.py"),
-    ("회비 관리 전체 플로우","qc_fees_full.py"),
-    ("통합 E2E 시나리오",   "qc_integration.py"),
+    ("인증 엣지 케이스",      "qc_auth_edge_cases.py"),
+    ("API 입력 검증",         "qc_api_validation.py"),
+    ("RBAC 전체 검증",        "qc_rbac_full.py"),
+    ("Security RBAC",         "qc_security_rbac.py"),
+    ("하드닝 검증",           "qc_hardening.py"),
+    ("출석 관리 전체 플로우", "qc_attendance_full.py"),
+    ("회비 관리 전체 플로우", "qc_fees_full.py"),
+    ("통합 E2E 시나리오",     "qc_integration.py"),
 ]
 
 WIDTH = 60
@@ -40,12 +45,15 @@ def run_script(label: str, script: str, python: str) -> tuple[bool, float, str]:
         return False, 0.0, f"[ERROR] 파일 없음: {script}"
 
     start = time.monotonic()
+    env = os.environ.copy()
+    env["QC_BASE_URL"] = _BASE_URL
     result = subprocess.run(
         [python, str(script_path)],
         capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
     )
     elapsed = time.monotonic() - start
     output = result.stdout + result.stderr
@@ -57,18 +65,25 @@ def main():
     parser = argparse.ArgumentParser(description="QC 마스터 러너")
     parser.add_argument("--stop-on-fail", action="store_true",
                         help="첫 번째 실패한 스크립트에서 중단")
+    parser.add_argument("--url", default=None,
+                        help="서버 URL (기본값: QC_BASE_URL 환경변수 또는 http://127.0.0.1:8000)")
     args = parser.parse_args()
+
+    global _BASE_URL
+    if args.url:
+        _BASE_URL = args.url.rstrip("/")
 
     python = sys.executable
 
     print("\n" + "=" * WIDTH)
     print("  QC 전체 실행 시작")
+    print(f"  대상 서버: {_BASE_URL}")
     print("=" * WIDTH)
 
     print("  서버 응답 대기 중...", end="", flush=True)
     if not wait_for_server():
         print(" [FAIL]")
-        print("[FATAL] 서버(http://127.0.0.1:8000)에 연결할 수 없습니다.")
+        print(f"[FATAL] 서버({_BASE_URL})에 연결할 수 없습니다.")
         sys.exit(1)
     print(" [OK]")
 

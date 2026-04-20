@@ -1,10 +1,11 @@
 import json
 import sys
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 ADMIN_ID = "master"
 ADMIN_PW = "1234"
 MEMBER_ID = "test001"

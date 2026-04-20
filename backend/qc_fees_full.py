@@ -8,10 +8,11 @@ QC: 회비 관리 전체 플로우
 - 미납 체크
 - 관리자 전용 기능 권한 검증
 """
+import os
 import urllib.request, urllib.error, urllib.parse, json, sys
 from datetime import date
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 PASS_COUNT = 0
 FAIL_COUNT = 0
 FAILURES = []

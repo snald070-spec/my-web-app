@@ -6,10 +6,11 @@ QC: 통합 E2E 시나리오
 - 리그 시즌 생성 및 조회
 - 멀티 멤버 동시 투표 시나리오
 """
+import os
 import urllib.request, urllib.error, urllib.parse, json, sys
 from datetime import date, datetime, timedelta
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 PASS_COUNT = 0
 FAIL_COUNT = 0
 FAILURES = []

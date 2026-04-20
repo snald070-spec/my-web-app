@@ -6,9 +6,10 @@ QC: 전체 RBAC (Role-Based Access Control) 검증
 - 비활성화 계정 접근 차단
 - 본인 역할 변경 불가
 """
+import os
 import urllib.request, urllib.error, urllib.parse, json, sys
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 PASS_COUNT = 0
 FAIL_COUNT = 0
 FAILURES = []
