@@ -71,6 +71,19 @@ async def lifespan(app: FastAPI):
         if migrated:
             db.commit()
 
+        # Migration: legacy "admin" seed → "master" with known password
+        _admin_row = db.query(models.User).filter(models.User.emp_id == "admin").first()
+        _master_row = db.query(models.User).filter(models.User.emp_id == "master").first()
+        if _admin_row and not _master_row:
+            _init_pw = os.environ.get("MASTER_INIT_PASSWORD", "1234")
+            _admin_row.emp_id = "master"
+            _admin_row.name = "master"
+            _admin_row.hashed_password = hash_password(_init_pw)
+            _admin_row.is_first_login = False
+            _admin_row.temp_password = None
+            db.commit()
+            logger.info("✅ Migrated admin -> master account")
+
         if db.query(models.User).count() == 0:
             init_pw = os.environ.get("MASTER_INIT_PASSWORD", "1234")
             admin = models.User(
