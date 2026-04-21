@@ -161,8 +161,7 @@ def _serialize_user(user: models.User) -> dict:
     role = models.canonical_role(user.role)
     return {
         "emp_id": user.emp_id,
-        # Keep legacy "name" key for API compatibility, but align it to emp_id.
-        "name": user.emp_id,
+        "name": user.name,
         "division": user.division,
         "department": user.department,
         "email": user.email,
@@ -199,8 +198,7 @@ def create_user(
     temp_pw = generate_temp_password()
     user = models.User(
         emp_id=emp_id,
-        # Legacy DB column; keep equal to emp_id so older features still render correctly.
-        name=emp_id,
+        name=(body.name or "").strip() or emp_id,
         division=(body.division or "").strip() or None,
         department=(body.department or "").strip(),
         email=(body.email or "").strip() or None,
@@ -307,6 +305,7 @@ def list_users(
         q = q.filter(
             or_(
                 models.User.emp_id.ilike(like),
+                models.User.name.ilike(like),
                 models.User.email.ilike(like),
                 models.User.department.ilike(like),
                 models.User.division.ilike(like),
@@ -339,8 +338,7 @@ def list_users(
     sort_map = {
         "created_at": models.User.created_at,
         "emp_id": models.User.emp_id,
-        # Keep accepted for backward-compat query params.
-        "name": models.User.emp_id,
+        "name": models.User.name,
         "role": models.User.role,
     }
     sort_col = sort_map.get((sort_by or "").strip(), models.User.created_at)
@@ -440,8 +438,7 @@ def update_user_profile(
         _rekey_user_references(db, old_emp_id, next_emp_id)
 
     user.emp_id = next_emp_id
-    # Legacy DB column; keep equal to emp_id.
-    user.name = next_emp_id
+    user.name = (body.name or "").strip() or user.name
     dept = (body.department or "").strip()
     if not dept:
         raise HTTPException(status_code=400, detail="Department is required.")
