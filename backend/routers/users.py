@@ -558,7 +558,7 @@ def bulk_delete_users(
                 actor_emp_id=master_user.emp_id,
                 target_emp_id=emp_id,
                 action="delete_user",
-                details={"role": user.role.value, "name": user.emp_id},
+                details={"role": user.role.value, "name": user.name},
             )
             db.query(models.MemberProfile).filter(models.MemberProfile.emp_id == emp_id).delete(synchronize_session=False)
             db.query(models.MembershipPayment).filter(models.MembershipPayment.emp_id == emp_id).delete(synchronize_session=False)
@@ -599,7 +599,7 @@ def delete_user(
             actor_emp_id=master_user.emp_id,
             target_emp_id=user.emp_id,
             action="delete_user",
-            details={"role": user.role.value, "name": user.emp_id},
+            details={"role": user.role.value, "name": user.name},
         )
         # Remove related records
         db.query(models.MemberProfile).filter(models.MemberProfile.emp_id == emp_id).delete(synchronize_session=False)

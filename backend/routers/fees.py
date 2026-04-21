@@ -535,7 +535,7 @@ def get_members_fee_status(
         items.append(
             {
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "department": u.department,
                 "membership_type": profile.membership_type.value,
                 "member_status": profile.member_status.value,
@@ -681,7 +681,7 @@ def get_fee_admin_matrix(
         rows.append(
             {
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "membership_type": profile.membership_type.value,
                 "member_status": profile.member_status.value,
                 "cells": cells,
@@ -829,7 +829,7 @@ def get_fee_reminders(
         unpaid.append(
             {
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "member_status": profile.member_status.value,
                 "membership_type": profile.membership_type.value,
                 "expected_monthly_amount": _expected_amount(profile.membership_type, models.FeePlanEnum.MONTHLY),
@@ -937,7 +937,7 @@ def check_unpaid_members(
         if not is_paid and profile.member_status != models.MemberStatusEnum.DORMANT:
             unpaid_list.append({
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "department": u.department,
                 "member_status": profile.member_status.value,
                 "membership_type": profile.membership_type.value,
