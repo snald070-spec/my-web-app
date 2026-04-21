@@ -101,8 +101,8 @@ export default function UserManagementPage() {
   const skip = (page - 1) * pageSize;
   const filterSelectStyle = { width: 140, textAlignLast: "center" };
   const filterButtonClass = "btn-secondary btn btn-sm h-[42px] w-[140px]";
-  const rowActionButtonClass = "btn-secondary btn px-2 py-1 text-[11px] sm:btn-sm min-w-0 sm:min-w-[70px]";
-  const rowToggleButtonClass = "btn btn px-2 py-1 text-[11px] sm:btn-sm min-w-0 sm:min-w-[70px]";
+  const rowActionButtonClass = "btn-secondary btn px-2 py-1 text-[11px] min-w-0";
+  const rowToggleButtonClass = "btn btn px-2 py-1 text-[11px] min-w-0";
 
   const actionLabel = {
     create_user: "회원 생성",
@@ -859,7 +859,7 @@ export default function UserManagementPage() {
                         : <span className="badge-green text-[11px]">활성</span>}
                     </td>
                     <td className="text-center">
-                      <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-2">
+                      <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-nowrap sm:items-center sm:justify-center sm:gap-1">
                         <button
                           className={rowActionButtonClass}
                           disabled={loading || savingId === u.emp_id || updating}
