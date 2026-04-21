@@ -114,6 +114,8 @@
            text-sm text-gray-900 placeholder-gray-400;
     transition: border-color var(--transition), box-shadow var(--transition);
   }
+  .field-select { text-align: center; text-align-last: center; }
+  .field-select option { text-align: center; }
   .field-input:focus, .field-select:focus, .field-textarea:focus {
     @apply outline-none;
     border-color: var(--color-primary);

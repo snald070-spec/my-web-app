@@ -645,17 +645,17 @@ export default function UserManagementPage() {
         </div>
       )}
 
-      <div className="card p-4">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="card p-4 space-y-2">
+        {/* 행 1: 이름 검색 + 드롭다운 6개 */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           <input
             className="field-input col-span-2 sm:col-span-1 text-center h-[42px]"
             placeholder="이름 검색"
             value={keyword}
             onChange={(e) => { setPage(1); setKeyword(e.target.value); }}
           />
-
           <select
-            className="field-select text-center h-[42px] [text-align-last:center]"
+            className="field-select h-[42px]"
             value={role}
             onChange={(e) => { setPage(1); setRole(e.target.value); }}
           >
@@ -665,9 +665,8 @@ export default function UserManagementPage() {
             <option value="GENERAL">일반</option>
             <option value="STUDENT">학생</option>
           </select>
-
           <select
-            className="field-select text-center h-[42px] [text-align-last:center]"
+            className="field-select h-[42px]"
             value={status}
             onChange={(e) => { setPage(1); setStatus(e.target.value); }}
           >
@@ -675,9 +674,8 @@ export default function UserManagementPage() {
             <option value="ACTIVE">활성</option>
             <option value="INACTIVE">비활성</option>
           </select>
-
           <select
-            className="field-select text-center h-[42px] [text-align-last:center]"
+            className="field-select h-[42px]"
             value={firstLogin}
             onChange={(e) => { setPage(1); setFirstLogin(e.target.value); }}
           >
@@ -685,9 +683,8 @@ export default function UserManagementPage() {
             <option value="PENDING">변경 필요</option>
             <option value="COMPLETED">변경 완료</option>
           </select>
-
           <select
-            className="field-select text-center h-[42px] [text-align-last:center]"
+            className="field-select h-[42px]"
             value={sortBy}
             onChange={(e) => { setPage(1); setSortBy(e.target.value); }}
           >
@@ -695,18 +692,16 @@ export default function UserManagementPage() {
             <option value="emp_id">이름</option>
             <option value="role">권한</option>
           </select>
-
           <select
-            className="field-select text-center h-[42px] [text-align-last:center]"
+            className="field-select h-[42px]"
             value={sortDir}
             onChange={(e) => { setPage(1); setSortDir(e.target.value); }}
           >
             <option value="desc">내림차순</option>
             <option value="asc">오름차순</option>
           </select>
-
           <select
-            className="field-select text-center h-[42px] [text-align-last:center]"
+            className="field-select h-[42px]"
             value={pageSize}
             onChange={(e) => { setPage(1); setPageSize(Number(e.target.value)); }}
           >
@@ -714,7 +709,10 @@ export default function UserManagementPage() {
               <option key={n} value={n}>{n}개씩</option>
             ))}
           </select>
+        </div>
 
+        {/* 행 2: 버튼 3개 */}
+        <div className="grid grid-cols-3 gap-2">
           <button
             className={filterButtonClass}
             onClick={() => {
@@ -728,47 +726,23 @@ export default function UserManagementPage() {
               setPageSize(10);
             }}
           >
-            <span className="sm:hidden">초기화</span>
-            <span className="hidden sm:inline">필터 초기화</span>
+            필터 초기화
           </button>
-
           <button
             className={filterButtonClass}
             onClick={handleExportCsv}
             disabled={exporting || loading}
           >
-            {exporting ? (
-              <>
-                <span className="sm:hidden">내보내는 중</span>
-                <span className="hidden sm:inline">내보내는 중...</span>
-              </>
-            ) : (
-              <>
-                <span className="sm:hidden">CSV</span>
-                <span className="hidden sm:inline">CSV 내보내기</span>
-              </>
-            )}
+            {exporting ? "내보내는 중..." : "CSV 내보내기"}
           </button>
-
           <button
             className={filterButtonClass}
             onClick={handleCopyShareLink}
             disabled={loading}
           >
-            {copiedLink ? (
-              <>
-                <span className="sm:hidden">복사됨</span>
-                <span className="hidden sm:inline">링크 복사됨</span>
-              </>
-            ) : (
-              <>
-                <span className="sm:hidden">공유링크</span>
-                <span className="hidden sm:inline">공유 링크 복사</span>
-              </>
-            )}
+            {copiedLink ? "링크 복사됨" : "공유 링크 복사"}
           </button>
         </div>
-
       </div>
 
       <div className="card overflow-hidden">
