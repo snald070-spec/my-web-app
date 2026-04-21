@@ -205,7 +205,7 @@ def create_user(
         hashed_password=hash_password(temp_pw),
         role=role_value,
         is_first_login=True,
-        temp_password=None,
+        temp_password=temp_pw,
         is_vip=bool(body.is_vip),
     )
 
@@ -630,12 +630,9 @@ def issue_temp_password(
     if models.canonical_role(user.role) == models.RoleEnum.MASTER:
         raise HTTPException(status_code=403, detail="Master account password cannot be reset via this endpoint.")
 
-    if models.canonical_role(user.role) in (models.RoleEnum.GENERAL, models.RoleEnum.STUDENT) and not _is_phone_id(user.emp_id):
-        raise HTTPException(status_code=400, detail="GENERAL/STUDENT account ID must be a phone number (digits only).")
-
     temp_pw = generate_temp_password()
     user.hashed_password = hash_password(temp_pw)
-    user.temp_password = None
+    user.temp_password = temp_pw
     user.is_first_login = True
 
     try:
