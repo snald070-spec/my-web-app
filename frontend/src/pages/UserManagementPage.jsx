@@ -646,8 +646,8 @@ export default function UserManagementPage() {
       )}
 
       <div className="card p-4 space-y-2">
-        {/* 행 1: 이름 검색 + 드롭다운 6개 */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        {/* 행 1: 이름 검색 + 드롭다운 5개 */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           <input
             className="field-input col-span-2 sm:col-span-1 text-center h-[42px]"
             placeholder="이름 검색"
@@ -673,15 +673,6 @@ export default function UserManagementPage() {
             <option value="ALL">전체 상태</option>
             <option value="ACTIVE">활성</option>
             <option value="INACTIVE">비활성</option>
-          </select>
-          <select
-            className="field-select h-[42px]"
-            value={firstLogin}
-            onChange={(e) => { setPage(1); setFirstLogin(e.target.value); }}
-          >
-            <option value="ALL">초기비번 전체</option>
-            <option value="PENDING">변경 필요</option>
-            <option value="COMPLETED">변경 완료</option>
           </select>
           <select
             className="field-select h-[42px]"
@@ -711,8 +702,8 @@ export default function UserManagementPage() {
           </select>
         </div>
 
-        {/* 행 2: 버튼 3개 */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* 행 2: 버튼 2개 */}
+        <div className="grid grid-cols-2 gap-2">
           <button
             className={filterButtonClass}
             onClick={() => {
@@ -734,13 +725,6 @@ export default function UserManagementPage() {
             disabled={exporting || loading}
           >
             {exporting ? "내보내는 중..." : "CSV 내보내기"}
-          </button>
-          <button
-            className={filterButtonClass}
-            onClick={handleCopyShareLink}
-            disabled={loading}
-          >
-            {copiedLink ? "링크 복사됨" : "공유 링크 복사"}
           </button>
         </div>
       </div>
