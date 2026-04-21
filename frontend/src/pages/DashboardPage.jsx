@@ -64,10 +64,7 @@ function AdminView({ onPreview }) {
         <p className="page-subtitle">포털 전체 현황입니다.</p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 gap-4">
-        <StatCard label="회비 외 입금 알림" value={stats?.non_fee_deposit_alerts_today ?? 0} icon="🚨" colour="red" to="/fees" />
-      </div>
+
 
       {user?.role === "MASTER" && (stats?.non_fee_deposit_alerts_today || 0) > 0 && (
         <div className="card border border-red-200 bg-red-50 p-4">
