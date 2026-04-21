@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { Component, useEffect } from "react";
+import { Component, useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -37,6 +37,65 @@ class RouteErrorBoundary extends Component {
     }
     return this.props.children;
   }
+}
+
+// ── Global user banner: always shown when logged in ───────────────────────────
+const ROLE_BADGE = {
+  MASTER:  { label: "마스터", cls: "bg-purple-100 text-purple-700" },
+  ADMIN:   { label: "관리자", cls: "bg-blue-100 text-blue-700" },
+  GENERAL: { label: "일반",   cls: "bg-gray-100 text-gray-600" },
+  STUDENT: { label: "학생",   cls: "bg-green-100 text-green-700" },
+};
+
+function UserBanner() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+
+  const badge = ROLE_BADGE[user?.role] ?? { label: user?.role ?? "", cls: "bg-gray-100 text-gray-600" };
+
+  function handleLogout() {
+    if (confirming) {
+      logout();
+      navigate("/", { replace: true });
+    } else {
+      setConfirming(true);
+    }
+  }
+
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(false), 3000);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
+  return (
+    <div className="shrink-0 bg-white border-b border-gray-100">
+      <div className="px-3 sm:px-6 py-2 flex items-center justify-between gap-3">
+        <span className="text-sm font-extrabold text-blue-600 tracking-tight select-none">
+          🏀 Draw
+        </span>
+        <div className="flex items-center gap-2">
+          <span className={`badge text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+            {badge.label}
+          </span>
+          <span className="text-sm font-semibold text-gray-700 max-w-[120px] truncate">
+            {user?.name}
+          </span>
+          <button
+            onClick={handleLogout}
+            className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              confirming
+                ? "bg-red-500 text-white hover:bg-red-600 scale-105"
+                : "text-gray-500 hover:text-red-500 hover:bg-red-50"
+            }`}
+          >
+            {confirming ? "정말 로그아웃?" : "로그아웃"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Shared page chrome: header bar + scrollable content area ──────────────────
@@ -89,6 +148,7 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen lg:h-screen lg:overflow-hidden lg:flex lg:flex-col">
+      <UserBanner />
       <div className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
         <Routes>
 
