@@ -320,7 +320,7 @@ def login(
         "token_type":    "bearer",
         "expires_in":    ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "emp_id":        user.emp_id,
-        "name":          user.emp_id,
+        "name":          user.name,
         "department":    user.department,
         "division":      user.division,
         "email":         user.email,
@@ -338,7 +338,7 @@ def me(
     role = models.canonical_role(current_user.role)
     return {
         "emp_id":        current_user.emp_id,
-        "name":          current_user.emp_id,
+        "name":          current_user.name,
         "department":    current_user.department,
         "division":      current_user.division,
         "email":         current_user.email,
@@ -411,7 +411,7 @@ def refresh_token(current_user: models.User = Depends(get_current_user)):
         "token_type":    "bearer",
         "expires_in":    ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "emp_id":        current_user.emp_id,
-        "name":          current_user.emp_id,
+        "name":          current_user.name,
         "department":    current_user.department,
         "division":      current_user.division,
         "email":         current_user.email,
