@@ -5,8 +5,14 @@ QC 마스터 러너: 모든 QC 스크립트를 순서대로 실행하고 통합 
   python qc_run_all.py
   python qc_run_all.py --stop-on-fail   # 첫 실패 시 중단
 """
-import subprocess, sys, time, argparse, urllib.request, urllib.error, os
+import subprocess, sys, time, argparse, urllib.request, urllib.error, os, io
 from pathlib import Path
+
+# Ensure UTF-8 output regardless of terminal codepage (Windows cp949 fix)
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 _BASE_URL = os.environ.get("QC_BASE_URL", "http://127.0.0.1:8000")
 
@@ -34,6 +40,13 @@ SCRIPTS = [
     ("출석 관리 전체 플로우", "qc_attendance_full.py"),
     ("회비 관리 전체 플로우", "qc_fees_full.py"),
     ("통합 E2E 시나리오",     "qc_integration.py"),
+    # ── 확장 전체 시나리오 ──────────────────────────────────────────────
+    ("사용자 관리 전체",       "qc_users_full.py"),
+    ("공지사항 전체",          "qc_notices_full.py"),
+    ("대시보드 전체",          "qc_dashboard_full.py"),
+    ("회비 관리 확장",         "qc_fees_extended.py"),
+    ("출석 관리 확장",         "qc_attendance_extended.py"),
+    ("리그 전체",              "qc_league_full.py"),
 ]
 
 WIDTH = 60
