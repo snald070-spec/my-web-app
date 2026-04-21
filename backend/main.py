@@ -65,10 +65,7 @@ async def lifespan(app: FastAPI):
             if row.role != canonical_role:
                 row.role = canonical_role
                 migrated = True
-            # Canonical identity policy: keep legacy name column identical to emp_id.
-            if row.name != row.emp_id:
-                row.name = row.emp_id
-                migrated = True
+
         if migrated:
             db.commit()
 
