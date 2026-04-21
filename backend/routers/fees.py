@@ -414,7 +414,7 @@ def _ingest_deposit_event(db: Session, body: DepositIngestBody, actor_emp_id: st
         "payment": {
             "id": payment.id,
             "emp_id": payment.emp_id,
-            "name": user.emp_id,
+            "name": user.name,
             "plan_type": payment.plan_type.value,
             "months_covered": months,
             "coverage_start_month": payment.coverage_start_month,
@@ -450,7 +450,7 @@ def get_my_fee_status(
     return {
         "year_month": ym,
         "emp_id": current_user.emp_id,
-        "name": current_user.emp_id,
+        "name": current_user.name,
         "membership_type": profile.membership_type.value,
         "member_status": profile.member_status.value,
         "expected_monthly_amount": monthly_expected,

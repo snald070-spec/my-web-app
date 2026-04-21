@@ -367,7 +367,7 @@ def get_member_attendance_summary(
         rows.append(
             {
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "department": u.department,
                 "league_team": team.value if team else None,
                 "total_votes": total,
@@ -409,7 +409,7 @@ def list_team_assignments(
         items.append(
             {
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "department": u.department,
                 "team_code": row.team_code.value if row and row.team_code else None,
                 "is_captain": bool(row.is_captain) if row else False,
@@ -613,7 +613,7 @@ def _build_event_vote_detail_payload(db: Session, event_id: int) -> dict:
         voted_items.append(
             {
                 "emp_id": vote.emp_id,
-                "name": user.emp_id if user else vote.emp_id,
+                "name": user.name if user else vote.emp_id,
                 "department": user.department if user else "-",
                 "league_team": team_by_emp_id.get(vote.emp_id),
                 "response": vote.response.value,
@@ -630,7 +630,7 @@ def _build_event_vote_detail_payload(db: Session, event_id: int) -> dict:
         pending_items.append(
             {
                 "emp_id": emp_id,
-                "name": user.emp_id if user else emp_id,
+                "name": user.name if user else emp_id,
                 "department": user.department if user else "-",
                 "league_team": team_by_emp_id.get(emp_id),
             }

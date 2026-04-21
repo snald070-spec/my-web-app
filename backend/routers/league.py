@@ -1898,7 +1898,7 @@ def get_draft_board(
         items.append(
             {
                 "emp_id": u.emp_id,
-                "name": u.emp_id,
+                "name": u.name,
                 "department": u.department,
                 "team_code": row.team_code.value if row and row.team_code else None,
                 "is_captain": bool(row.is_captain) if row else False,
@@ -1937,7 +1937,7 @@ def get_draft_board(
             "pick_no": p.pick_no,
             "team_code": p.team_code.value,
             "emp_id": p.selected_emp_id,
-            "name": p.selected_emp_id,
+            "name": p.selected_name or p.selected_emp_id,
             "picked_by": p.picked_by,
             "picked_at": p.picked_at,
         }
