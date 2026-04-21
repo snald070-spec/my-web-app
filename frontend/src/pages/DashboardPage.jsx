@@ -65,8 +65,7 @@ function AdminView({ onPreview }) {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard label="오늘 상태변경"     value={stats?.status_changes_today} icon="🔁" colour="amber" to="/admin/users?status=INACTIVE" />
+      <div className="grid grid-cols-1 gap-4">
         <StatCard label="회비 외 입금 알림" value={stats?.non_fee_deposit_alerts_today ?? 0} icon="🚨" colour="red" to="/fees" />
       </div>
 
