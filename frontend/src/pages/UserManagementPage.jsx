@@ -99,8 +99,8 @@ export default function UserManagementPage() {
   });
 
   const skip = (page - 1) * pageSize;
-  const filterSelectStyle = { width: 140, textAlignLast: "center" };
-  const filterButtonClass = "btn-secondary btn btn-sm h-[42px] w-[140px]";
+  const filterSelectStyle = {};
+  const filterButtonClass = "btn-secondary btn btn-sm h-[42px] w-full";
   const rowActionButtonClass = "btn-secondary btn px-2 py-1 text-[11px] min-w-0";
   const rowToggleButtonClass = "btn btn px-2 py-1 text-[11px] min-w-0";
 
@@ -646,18 +646,16 @@ export default function UserManagementPage() {
       )}
 
       <div className="card p-4">
-        <div className="grid grid-cols-2 items-center justify-center gap-2 sm:flex sm:flex-wrap">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <input
-            className="field-input col-span-2 text-center h-[42px] sm:col-auto"
-            style={{ maxWidth: 280 }}
+            className="field-input col-span-2 sm:col-span-1 text-center h-[42px]"
             placeholder="이름 검색"
             value={keyword}
             onChange={(e) => { setPage(1); setKeyword(e.target.value); }}
           />
 
           <select
-            className="field-select text-center h-[42px]"
-            style={filterSelectStyle}
+            className="field-select text-center h-[42px] [text-align-last:center]"
             value={role}
             onChange={(e) => { setPage(1); setRole(e.target.value); }}
           >
@@ -669,8 +667,7 @@ export default function UserManagementPage() {
           </select>
 
           <select
-            className="field-select text-center h-[42px]"
-            style={filterSelectStyle}
+            className="field-select text-center h-[42px] [text-align-last:center]"
             value={status}
             onChange={(e) => { setPage(1); setStatus(e.target.value); }}
           >
@@ -680,8 +677,7 @@ export default function UserManagementPage() {
           </select>
 
           <select
-            className="field-select text-center h-[42px]"
-            style={filterSelectStyle}
+            className="field-select text-center h-[42px] [text-align-last:center]"
             value={firstLogin}
             onChange={(e) => { setPage(1); setFirstLogin(e.target.value); }}
           >
@@ -691,8 +687,7 @@ export default function UserManagementPage() {
           </select>
 
           <select
-            className="field-select text-center h-[42px]"
-            style={filterSelectStyle}
+            className="field-select text-center h-[42px] [text-align-last:center]"
             value={sortBy}
             onChange={(e) => { setPage(1); setSortBy(e.target.value); }}
           >
@@ -702,8 +697,7 @@ export default function UserManagementPage() {
           </select>
 
           <select
-            className="field-select text-center h-[42px]"
-            style={filterSelectStyle}
+            className="field-select text-center h-[42px] [text-align-last:center]"
             value={sortDir}
             onChange={(e) => { setPage(1); setSortDir(e.target.value); }}
           >
@@ -712,8 +706,7 @@ export default function UserManagementPage() {
           </select>
 
           <select
-            className="field-select text-center h-[42px]"
-            style={filterSelectStyle}
+            className="field-select text-center h-[42px] [text-align-last:center]"
             value={pageSize}
             onChange={(e) => { setPage(1); setPageSize(Number(e.target.value)); }}
           >
