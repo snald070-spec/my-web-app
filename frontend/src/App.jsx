@@ -18,6 +18,7 @@ import LeagueViewPage from "./pages/LeagueViewPage";
 import LeagueDraftPage from "./pages/LeagueDraftPage";
 import MembersPage from "./pages/MembersPage";
 import MyProfilePage from "./pages/MyProfilePage";
+import GoogleProfileSetupPage from "./pages/GoogleProfileSetupPage";
 
 // ── Error boundary (prevents full white-screen crashes) ───────────────────────
 class RouteErrorBoundary extends Component {
@@ -156,6 +157,11 @@ function AppRoutes() {
       sessionStorage.setItem("loginRedirect", current);
     }
     return <LoginPage />;
+  }
+
+  // Google 신규 가입자 프로필 미완성
+  if (user.is_profile_complete === false) {
+    return <GoogleProfileSetupPage />;
   }
 
   return (

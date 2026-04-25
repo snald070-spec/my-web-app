@@ -81,6 +81,10 @@ class User(Base):
     position   = Column(String(20), nullable=True, comment="농구 포지션 (PG/SG/SF/PF/C 등)")
     avatar_url = Column(String(300), nullable=True, comment="프로필 사진 경로")
 
+    # Profile completion (Google 신규가입 후 추가 입력)
+    birthday           = Column(String(5),   nullable=True, comment="생일 MM-DD")
+    is_profile_complete = Column(Boolean, default=True, nullable=True, comment="False = Google 신규가입 후 프로필 미완성")
+
     # Social login
     google_id = Column(String(200), nullable=True, unique=True, comment="Google OAuth sub (unique ID)")
 

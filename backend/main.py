@@ -59,6 +59,15 @@ def _ensure_user_profile_columns():
             conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(300)"))
         if "google_id" not in columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR(200)"))
+        if "birthday" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN birthday VARCHAR(5)"))
+        if "is_profile_complete" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_profile_complete BOOLEAN DEFAULT 1"))
+            # Google 신규 가입자 중 birth_year가 없는 경우 미완성으로 표시
+            conn.execute(text(
+                "UPDATE users SET is_profile_complete = 0 "
+                "WHERE google_id IS NOT NULL AND birth_year IS NULL"
+            ))
 
 
 _ensure_league_team_assignment_columns()
@@ -341,11 +350,13 @@ def login(
         "division":      user.division,
         "email":         user.email,
         "role":          role.value,
-        "is_first_login": user.is_first_login,
-        "is_vip":        user.is_vip,
-        "birth_year":    user.birth_year,
-        "position":      user.position,
-        "avatar_url":    user.avatar_url,
+        "is_first_login":       user.is_first_login,
+        "is_vip":               user.is_vip,
+        "birth_year":           user.birth_year,
+        "position":             user.position,
+        "avatar_url":           user.avatar_url,
+        "birthday":             getattr(user, "birthday", None),
+        "is_profile_complete":  bool(getattr(user, "is_profile_complete", True)),
     }
 
 
@@ -362,11 +373,13 @@ def me(
         "division":      current_user.division,
         "email":         current_user.email,
         "role":          role.value,
-        "is_first_login": current_user.is_first_login,
-        "is_vip":        current_user.is_vip,
-        "birth_year":    current_user.birth_year,
-        "position":      current_user.position,
-        "avatar_url":    current_user.avatar_url,
+        "is_first_login":       current_user.is_first_login,
+        "is_vip":               current_user.is_vip,
+        "birth_year":           current_user.birth_year,
+        "position":             current_user.position,
+        "avatar_url":           current_user.avatar_url,
+        "birthday":             getattr(current_user, "birthday", None),
+        "is_profile_complete":  bool(getattr(current_user, "is_profile_complete", True)),
     }
 
 
@@ -421,6 +434,72 @@ def change_password(
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error.")
     return {"message": "Password changed successfully."}
+
+
+class CompleteProfileRequest(BaseModel):
+    name: str
+    birth_year: int
+    position: str
+    birthday: str | None = None   # MM-DD (선택)
+    avatar_url: str | None = None  # 선택
+
+
+_ALLOWED_POSITIONS = {"PG", "SG", "SF", "PF", "C", "F", "G"}
+
+
+@app.post("/api/auth/complete-profile")
+def complete_profile(
+    body: CompleteProfileRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Google 신규 가입자 프로필 완성 (이름·출생연도·포지션 필수, 사진·생일 선택)."""
+    import re as _re
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="이름을 입력해주세요.")
+    if not (1930 <= body.birth_year <= 2015):
+        raise HTTPException(status_code=400, detail="올바른 출생연도를 입력해주세요.")
+    if body.position not in _ALLOWED_POSITIONS:
+        raise HTTPException(status_code=400, detail="올바른 포지션을 선택해주세요.")
+    if body.birthday and not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", body.birthday):
+        raise HTTPException(status_code=400, detail="생일 형식이 올바르지 않습니다. (MM-DD)")
+
+    current_user.name = name
+    current_user.birth_year = body.birth_year
+    current_user.position = body.position
+    if body.birthday:
+        current_user.birthday = body.birthday
+    if body.avatar_url:
+        current_user.avatar_url = body.avatar_url
+    current_user.is_profile_complete = True
+
+    try:
+        db.commit()
+        db.refresh(current_user)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="프로필 저장 중 오류가 발생했습니다.")
+
+    role = models.canonical_role(current_user.role)
+    return {
+        "access_token":        create_access_token({"sub": current_user.emp_id}),
+        "token_type":          "bearer",
+        "expires_in":          ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "emp_id":              current_user.emp_id,
+        "name":                current_user.name,
+        "department":          current_user.department,
+        "division":            getattr(current_user, "division", None),
+        "email":               current_user.email,
+        "role":                role.value,
+        "is_first_login":      False,
+        "is_vip":              bool(current_user.is_vip),
+        "birth_year":          current_user.birth_year,
+        "position":            current_user.position,
+        "avatar_url":          current_user.avatar_url,
+        "birthday":            current_user.birthday,
+        "is_profile_complete": True,
+    }
 
 
 class GoogleLoginRequest(BaseModel):
@@ -496,6 +575,7 @@ def google_login(
             role=models.RoleEnum.GENERAL,
             is_first_login=False,
             google_id=google_sub,
+            is_profile_complete=False,
         )
         try:
             db.add(user)
@@ -521,11 +601,13 @@ def google_login(
         "division":       getattr(user, "division", None),
         "email":          user.email,
         "role":           role.value,
-        "is_first_login": False,
-        "is_vip":         bool(user.is_vip),
-        "birth_year":     user.birth_year,
-        "position":       user.position,
-        "avatar_url":     user.avatar_url,
+        "is_first_login":       False,
+        "is_vip":               bool(user.is_vip),
+        "birth_year":           user.birth_year,
+        "position":             user.position,
+        "avatar_url":           user.avatar_url,
+        "birthday":             getattr(user, "birthday", None),
+        "is_profile_complete":  bool(getattr(user, "is_profile_complete", True)),
     }
 
 
@@ -544,11 +626,13 @@ def refresh_token(current_user: models.User = Depends(get_current_user)):
         "division":      current_user.division,
         "email":         current_user.email,
         "role":          role.value,
-        "is_first_login": current_user.is_first_login,
-        "is_vip":        current_user.is_vip,
-        "birth_year":    current_user.birth_year,
-        "position":      current_user.position,
-        "avatar_url":    current_user.avatar_url,
+        "is_first_login":       current_user.is_first_login,
+        "is_vip":               current_user.is_vip,
+        "birth_year":           current_user.birth_year,
+        "position":             current_user.position,
+        "avatar_url":           current_user.avatar_url,
+        "birthday":             getattr(current_user, "birthday", None),
+        "is_profile_complete":  bool(getattr(current_user, "is_profile_complete", True)),
     }
 
 
