@@ -265,7 +265,6 @@ export default function AttendancePage() {
                 <thead>
                   <tr>
                     <th>이름</th>
-                    <th>부서</th>
                     <th>참석</th>
                     <th>지각</th>
                     <th>불참</th>
@@ -279,7 +278,6 @@ export default function AttendancePage() {
                   ) : memberSummary.map((m) => (
                     <tr key={m.emp_id}>
                       <td>{m.name}</td>
-                      <td>{m.department}</td>
                       <td>{m.attend_count}</td>
                       <td>{m.late_count}</td>
                       <td>{m.absent_count}</td>
@@ -406,7 +404,6 @@ export default function AttendancePage() {
                         <thead>
                           <tr>
                             <th>이름</th>
-                            <th>부서</th>
                             <th>리그 팀</th>
                             <th>응답</th>
                             <th>투표 시각</th>
@@ -418,7 +415,6 @@ export default function AttendancePage() {
                           ) : (detailData.voted || []).map((row) => (
                             <tr key={`voted_${row.emp_id}`}>
                               <td>{row.name}</td>
-                              <td>{row.department || "-"}</td>
                               <td>{row.league_team ? `${row.league_team}팀` : "-"}</td>
                               <td>{responseLabel[row.response] || row.response}</td>
                               <td>{row.voted_at ? String(row.voted_at).replace("T", " ") : "-"}</td>
@@ -438,7 +434,6 @@ export default function AttendancePage() {
                         <thead>
                           <tr>
                             <th>이름</th>
-                            <th>부서</th>
                             <th>리그 팀</th>
                           </tr>
                         </thead>
@@ -448,7 +443,6 @@ export default function AttendancePage() {
                           ) : (detailData.pending || []).map((row) => (
                             <tr key={`pending_${row.emp_id}`}>
                               <td>{row.name}</td>
-                              <td>{row.department || "-"}</td>
                               <td>{row.league_team ? `${row.league_team}팀` : "-"}</td>
                             </tr>
                           ))}

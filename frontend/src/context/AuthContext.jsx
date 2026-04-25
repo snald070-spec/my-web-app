@@ -92,6 +92,19 @@ export function AuthProvider({ children }) {
     return data;
   }
 
+  async function loginWithGoogle(credential) {
+    const { data } = await api.post("/api/auth/google", { credential });
+    localStorage.setItem("token", data.access_token);
+    if (data.expires_in) {
+      const expiresAt = Date.now() + data.expires_in * 1000;
+      localStorage.setItem("tokenExpiresAt", String(expiresAt));
+      _scheduleRefresh(expiresAt);
+    }
+    localStorage.setItem("user", JSON.stringify(data));
+    setUser(data);
+    return data;
+  }
+
   function updateUser(updates) {
     setUser((prev) => {
       const next = { ...prev, ...updates };
@@ -108,7 +121,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthCtx.Provider value={{ user, login, logout, updateUser }}>
+    <AuthCtx.Provider value={{ user, login, loginWithGoogle, logout, updateUser }}>
       {children}
     </AuthCtx.Provider>
   );

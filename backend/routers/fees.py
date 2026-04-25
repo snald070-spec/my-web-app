@@ -178,7 +178,7 @@ def _find_member_by_exact_name(db: Session, name: str) -> list[models.User]:
         models.User.role.in_(models.MEMBER_ROLE_VALUES),
         models.User.is_resigned.isnot(True),
     ).all()
-    return [u for u in users if _normalize_name(u.emp_id) == target]
+    return [u for u in users if _normalize_name(u.name) == target]
 
 
 def _build_event_key(source: str, depositor_name: str, amount: int, occurred_at: datetime | None, year_month: str) -> str:
@@ -302,7 +302,7 @@ def _ingest_deposit_event(db: Session, body: DepositIngestBody, actor_emp_id: st
             "event_id": row.id,
             "match_status": row.match_status,
             "matched_emp_id": user.emp_id,
-            "matched_name": user.emp_id,
+            "matched_name": user.name,
         }
 
     coverage_end = _add_months(ym, months - 1)
@@ -361,7 +361,7 @@ def _ingest_deposit_event(db: Session, body: DepositIngestBody, actor_emp_id: st
             "event_id": row.id,
             "match_status": row.match_status,
             "matched_emp_id": user.emp_id,
-            "matched_name": user.emp_id,
+            "matched_name": user.name,
             "months_covered": months,
             "coverage_start_month": ym,
             "coverage_end_month": coverage_end,
@@ -1102,7 +1102,9 @@ def ingest_deposit_webhook(
 ):
     """카카오뱅크 알림 파싱 서버에서 호출하는 웹훅 진입점."""
     expected_token = (os.environ.get("DEPOSIT_WEBHOOK_TOKEN") or "").strip()
-    if expected_token and x_webhook_token != expected_token:
+    if not expected_token:
+        raise HTTPException(status_code=403, detail="Webhook token not configured on server")
+    if x_webhook_token != expected_token:
         raise HTTPException(status_code=401, detail="Invalid webhook token")
     return _ingest_deposit_event(db, body, "AUTO_WEBHOOK")
 

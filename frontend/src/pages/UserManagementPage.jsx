@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import { getItems, getTotal } from "../utils/apiHelpers";
+import Avatar from "../components/Avatar";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const ROLE_OPTIONS = ["ALL", "MASTER", "ADMIN", "GENERAL", "STUDENT"];
@@ -96,7 +97,12 @@ export default function UserManagementPage() {
     emp_id: "",
     role: "GENERAL",
     is_vip: false,
+    birth_year: "",
+    position: "",
   });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview]     = useState(null);
+  const avatarInputRef = useRef(null);
 
   const skip = (page - 1) * pageSize;
   const filterSelectStyle = {};
@@ -338,7 +344,10 @@ export default function UserManagementPage() {
       emp_id: user.emp_id || "",
       role: user.role || "GENERAL",
       is_vip: !!user.is_vip,
+      birth_year: user.birth_year ? String(user.birth_year) : "",
+      position: user.position || "",
     });
+    setAvatarPreview(null);
   }
 
   function openCreate() {
@@ -363,8 +372,6 @@ export default function UserManagementPage() {
     try {
       const { data } = await api.post("/api/users", {
         emp_id: id,
-        department: "미지정",
-        division: "",
         email: "",
         role: createForm.role,
         is_vip: !!createForm.is_vip,
@@ -395,11 +402,11 @@ export default function UserManagementPage() {
     try {
       await api.patch(`/api/users/${editingUser.emp_id}`, {
         emp_id: canManageRoles ? form.emp_id.trim() : editingUser.emp_id,
-        department: editingUser.department || "미지정",
-        division: editingUser.division || "",
         email: editingUser.email || "",
         role: canManageRoles ? form.role : editingUser.role,
         is_vip: !!form.is_vip,
+        birth_year: form.birth_year ? parseInt(form.birth_year, 10) : null,
+        position: form.position.trim() || null,
       });
       await loadUsers();
       setEditingUser(null);
@@ -408,6 +415,47 @@ export default function UserManagementPage() {
       setErr(toErrorMessage(e.response?.data?.detail, "회원 정보 저장에 실패했습니다."));
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file || !editingUser) return;
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarUploading(true);
+    setErr("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post(`/api/users/${editingUser.emp_id}/avatar`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setEditingUser((u) => ({ ...u, avatar_url: data.avatar_url }));
+      await loadUsers();
+      setSuccessMsg("프로필 사진이 저장되었습니다.");
+    } catch (e) {
+      setErr(toErrorMessage(e.response?.data?.detail, "사진 업로드에 실패했습니다."));
+      setAvatarPreview(null);
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
+  async function handleAvatarDelete() {
+    if (!editingUser) return;
+    setAvatarUploading(true);
+    setErr("");
+    try {
+      await api.delete(`/api/users/${editingUser.emp_id}/avatar`);
+      setEditingUser((u) => ({ ...u, avatar_url: null }));
+      setAvatarPreview(null);
+      await loadUsers();
+      setSuccessMsg("프로필 사진이 삭제되었습니다.");
+    } catch (e) {
+      setErr(toErrorMessage(e.response?.data?.detail, "사진 삭제에 실패했습니다."));
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
@@ -467,8 +515,6 @@ export default function UserManagementPage() {
         // Backward-compatible fallback when server has not been restarted with /role endpoint.
         const { data } = await api.patch(`/api/users/${user.emp_id}`, {
           emp_id: user.emp_id,
-          department: user.department || "미지정",
-          division: user.division || "",
           email: user.email || "",
           role: nextRole,
           is_vip: !!user.is_vip,
@@ -909,6 +955,41 @@ export default function UserManagementPage() {
               <h3 className="modal-title w-full text-center">회원 정보 수정: {editingUser.emp_id}</h3>
             </div>
             <div className="modal-body space-y-3 text-center">
+              {/* 프로필 사진 */}
+              <div className="flex flex-col items-center gap-2">
+                <Avatar
+                  name={editingUser.emp_id}
+                  avatarUrl={avatarPreview || editingUser.avatar_url}
+                  size="xl"
+                />
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary btn btn-sm"
+                    disabled={avatarUploading}
+                    onClick={() => avatarInputRef.current?.click()}
+                  >
+                    {avatarUploading ? "업로드 중..." : "사진 변경"}
+                  </button>
+                  {(avatarPreview || editingUser.avatar_url) && (
+                    <button
+                      type="button"
+                      className="btn-danger btn btn-sm"
+                      disabled={avatarUploading}
+                      onClick={handleAvatarDelete}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
+              </div>
               <div>
                 <label className="field-label text-center">이름</label>
                 <input
@@ -935,6 +1016,35 @@ export default function UserManagementPage() {
                 ) : (
                   <div className="field-input text-center bg-gray-50">{roleLabel[editingUser.role] || editingUser.role}</div>
                 )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label text-center">출생연도</label>
+                  <input
+                    type="number"
+                    className="field-input text-center"
+                    placeholder="예: 1995"
+                    min="1950"
+                    max="2020"
+                    value={form.birth_year}
+                    onChange={(e) => setForm((p) => ({ ...p, birth_year: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="field-label text-center">포지션</label>
+                  <select
+                    className="field-select text-center"
+                    value={form.position}
+                    onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))}
+                  >
+                    <option value="">미지정</option>
+                    <option value="PG">PG (포인트가드)</option>
+                    <option value="SG">SG (슈팅가드)</option>
+                    <option value="SF">SF (스몰포워드)</option>
+                    <option value="PF">PF (파워포워드)</option>
+                    <option value="C">C (센터)</option>
+                  </select>
+                </div>
               </div>
               <label className="inline-flex items-center justify-center gap-2 text-sm text-gray-700 w-full">
                 <input

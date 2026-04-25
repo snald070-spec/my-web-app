@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { PreviewToggleButton, PreviewModeBanner } from "../components/EmployeePreviewToggle";
+import PlayerCareerModal from "../components/PlayerCareerModal";
 import api from "../api";
 
 /** Reusable stat card */
@@ -37,6 +38,7 @@ function AdminView({ onPreview }) {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [alertMsg, setAlertMsg] = useState("");
+  const [statsEmpId, setStatsEmpId] = useState(null);
 
   useEffect(() => {
     api.get("/api/dashboard/admin-stats")
@@ -57,6 +59,9 @@ function AdminView({ onPreview }) {
 
   return (
     <div className="page-container">
+      {statsEmpId && (
+        <PlayerCareerModal empId={statsEmpId} onClose={() => setStatsEmpId(null)} />
+      )}
       <PreviewToggleButton onPreview={onPreview} />
 
       <div className="page-header">
@@ -145,7 +150,70 @@ function AdminView({ onPreview }) {
           to="/league/scoresheet/view"
           colour="blue"
         />
-        {/* <ModuleCard icon="🚗" title="Vehicle Dispatch" ... /> */}
+        <ModuleCard
+          icon="🔍"
+          title="회원 검색"
+          description="활동 회원 목록과 커리어 스탯을 확인합니다."
+          to="/members"
+          colour="green"
+        />
+        <ModuleCard
+          icon="📊"
+          title="내 스탯 보기"
+          description="내 커리어 통산 및 시즌별 기록을 확인합니다."
+          onClick={() => setStatsEmpId(user?.emp_id)}
+          colour="amber"
+        />
+        <ModuleCard
+          icon="👤"
+          title="내 정보 수정"
+          description="프로필 사진, 이름, 나이, 포지션을 수정합니다."
+          to="/profile"
+          colour="blue"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Attendance summary mini-card */
+function AttendanceSummary() {
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    api.get("/api/attendance/me/summary").then(r => setSummary(r.data)).catch(() => {});
+  }, []);
+
+  if (!summary) return null;
+
+  const rate = summary.attendance_rate ?? 0;
+  const barColor = rate >= 70 ? "bg-green-400" : rate >= 40 ? "bg-amber-400" : "bg-red-400";
+
+  return (
+    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">내 출석 현황</p>
+        <span className="text-xs text-slate-400">{summary.total_votes}경기</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+            <span>출석률</span>
+            <span className="font-bold text-slate-700">{rate}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+            <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${rate}%` }} />
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[11px] text-slate-400">누적점수</p>
+          <p className="text-sm font-bold text-blue-600">{summary.cumulative_score ?? 0}점</p>
+        </div>
+      </div>
+      <div className="mt-2 flex gap-3 text-[11px] text-slate-500">
+        <span>출석 <b className="text-green-600">{summary.attend_count}</b></span>
+        <span>지각 <b className="text-amber-500">{summary.late_count}</b></span>
+        <span>결석 <b className="text-red-500">{summary.absent_count}</b></span>
       </div>
     </div>
   );
@@ -154,11 +222,14 @@ function AdminView({ onPreview }) {
 /** Member view — personalised welcome */
 function MemberView() {
   const { user } = useAuth();
-  const orgParts = [user?.department, user?.division].filter((v) => !!(v && String(v).trim()));
-  const orgLabel = orgParts.length > 0 ? orgParts.join(" · ") : "소속 미지정";
+  const orgLabel = "Draw Basketball Team";
+  const [statsEmpId, setStatsEmpId] = useState(null);
 
   return (
     <div className="page-container">
+      {statsEmpId && (
+        <PlayerCareerModal empId={statsEmpId} onClose={() => setStatsEmpId(null)} />
+      )}
       <div className="card px-6 py-8 text-center max-w-lg mx-auto">
         <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
           👋
@@ -166,10 +237,13 @@ function MemberView() {
         <h1 className="text-xl font-bold text-gray-800 mb-1">
           {user?.name}님, 환영합니다!
         </h1>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 mb-4">
           {orgLabel}
         </p>
-        <div className="grid grid-cols-1 gap-3">
+
+        <AttendanceSummary />
+
+        <div className="grid grid-cols-1 gap-3 mt-4">
           <ModuleCard
             icon="📢"
             title="공지사항"
@@ -205,24 +279,42 @@ function MemberView() {
             to="/league/scoresheet/view"
             colour="blue"
           />
+          <ModuleCard
+            icon="🔍"
+            title="회원 검색"
+            description="활동 회원 목록, 포지션, 커리어 스탯을 한눈에 확인합니다."
+            to="/members"
+            colour="green"
+          />
+          <ModuleCard
+            icon="📊"
+            title="내 스탯 보기"
+            description="내 커리어 통산 및 시즌별 기록을 확인합니다."
+            onClick={() => setStatsEmpId(user?.emp_id)}
+            colour="amber"
+          />
+          <ModuleCard
+            icon="👤"
+            title="내 정보 수정"
+            description="프로필 사진, 이름, 나이, 포지션을 수정합니다."
+            to="/profile"
+            colour="blue"
+          />
         </div>
       </div>
     </div>
   );
 }
 
-/** Module shortcut card */
-function ModuleCard({ icon, title, description, to, colour = "blue" }) {
+/** Module shortcut card — supports Link (to) or button (onClick) */
+function ModuleCard({ icon, title, description, to, onClick, colour = "blue" }) {
   const colours = {
     blue:  "bg-blue-50  text-blue-600  hover:bg-blue-100",
     green: "bg-green-50 text-green-600 hover:bg-green-100",
     amber: "bg-amber-50 text-amber-700 hover:bg-amber-100",
   };
-  return (
-    <Link
-      to={to}
-      className={`card p-5 flex items-start gap-4 text-left cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5`}
-    >
+  const inner = (
+    <>
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${colours[colour]}`}>
         {icon}
       </div>
@@ -230,6 +322,25 @@ function ModuleCard({ icon, title, description, to, colour = "blue" }) {
         <p className="font-bold text-gray-800 text-sm">{title}</p>
         <p className="text-xs text-gray-400 mt-0.5">{description}</p>
       </div>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="card p-5 flex items-start gap-4 text-left cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full"
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link
+      to={to}
+      className="card p-5 flex items-start gap-4 text-left cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+    >
+      {inner}
     </Link>
   );
 }

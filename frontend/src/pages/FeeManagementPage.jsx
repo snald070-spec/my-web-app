@@ -555,7 +555,7 @@ export default function FeeManagementPage() {
                       style={{ maxWidth: 280 }}
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
-                      placeholder="아이디/이름/부서 검색"
+                      placeholder="아이디/이름 검색"
                     />
                     <select
                       className="field-select"
@@ -580,7 +580,6 @@ export default function FeeManagementPage() {
                         <tr>
                           <th>아이디</th>
                           <th>이름</th>
-                          <th>부서</th>
                           <th>회원 구분</th>
                           <th>회원 상태</th>
                           <th>월 기준 회비</th>
@@ -602,7 +601,6 @@ export default function FeeManagementPage() {
                           <tr key={m.emp_id}>
                             <td>{m.emp_id}</td>
                             <td>{m.name}</td>
-                            <td>{m.department}</td>
                             <td>
                               <select
                                 className="field-select"

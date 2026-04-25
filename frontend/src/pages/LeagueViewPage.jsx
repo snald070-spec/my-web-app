@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
+import PlayerCareerModal from "../components/PlayerCareerModal";
 
 const TEAM_LABEL = { A: "A팀", B: "B팀", C: "C팀" };
 const TEAM_ABBR  = { A: "A", B: "B", C: "C" };
@@ -22,6 +23,8 @@ export default function LeagueViewPage() {
   const [playerStats,   setPlayerStats]   = useState([]);
   const [tab,           setTab]           = useState("standings");
   const [error,         setError]         = useState("");
+  const [profileEmpId,  setProfileEmpId]  = useState(null);
+  const openProfile = useCallback((empId) => setProfileEmpId(empId), []);
 
   // 시즌 목록 로드
   useEffect(() => {
@@ -71,7 +74,7 @@ export default function LeagueViewPage() {
   const resultWeeks = useMemo(() =>
     schedule.map(w => ({
       ...w,
-      matches: w.matches.filter(m => m.status === "FINAL" || m.status === "FORFEIT"),
+      matches: (w.matches || []).filter(m => m.status === "FINAL" || m.status === "FORFEIT"),
     })).filter(w => w.matches.length > 0),
     [schedule]
   );
@@ -227,7 +230,11 @@ export default function LeagueViewPage() {
           {playerStats.slice(0, 3).map((p, i) => (
             <div key={p.emp_id} className="card p-3 text-center">
               <div className="text-2xl mb-1">{RANK_MEDAL[i + 1]}</div>
-              <div className="font-bold text-gray-800 text-sm truncate">{p.name}</div>
+              <button
+                type="button"
+                onClick={() => openProfile(p.emp_id)}
+                className="font-bold text-gray-800 text-sm truncate hover:text-blue-600 hover:underline w-full"
+              >{p.name}</button>
               <TeamTag code={p.team_code} />
               <div className="mt-2">
                 <p className="text-2xl font-bold text-blue-600">{p.total_points}</p>
@@ -266,7 +273,13 @@ export default function LeagueViewPage() {
                 {playerStats.map((p, i) => (
                   <tr key={p.emp_id}>
                     <td className="text-gray-400 text-xs">{i + 1}</td>
-                    <td className="font-semibold text-gray-800 text-left">{p.name}</td>
+                    <td className="font-semibold text-left">
+                      <button
+                        type="button"
+                        onClick={() => openProfile(p.emp_id)}
+                        className="text-gray-800 hover:text-blue-600 hover:underline text-left"
+                      >{p.name}</button>
+                    </td>
                     <td><TeamTag code={p.team_code} /></td>
                     <td className="tabular-nums">{p.games}</td>
                     <td className="font-bold text-blue-600 tabular-nums">{p.total_points}</td>
@@ -292,6 +305,9 @@ export default function LeagueViewPage() {
   // ── Main render ────────────────────────────────────────────────────────────
   return (
     <div className="page-container space-y-4">
+      {profileEmpId && (
+        <PlayerCareerModal empId={profileEmpId} onClose={() => setProfileEmpId(null)} />
+      )}
       {error && <div className="alert-error">{error}</div>}
 
       {/* Season selector */}

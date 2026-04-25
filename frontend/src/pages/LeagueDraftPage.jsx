@@ -232,14 +232,13 @@ export default function LeagueDraftPage() {
               <tr>
                 <th>이름</th>
                 <th>사번</th>
-                <th>부서</th>
                 <th>팀장</th>
               </tr>
             </thead>
             <tbody>
               {players.length === 0 ? (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={3}>
                     <div className="empty-state py-8"><p className="empty-state-text">배정된 인원이 없습니다.</p></div>
                   </td>
                 </tr>
@@ -247,7 +246,6 @@ export default function LeagueDraftPage() {
                 <tr key={row.emp_id}>
                   <td>{row.name}</td>
                   <td>{row.emp_id}</td>
-                  <td>{row.department || "-"}</td>
                   <td>{row.is_captain ? "팀장" : "-"}</td>
                 </tr>
               ))}
@@ -333,7 +331,6 @@ export default function LeagueDraftPage() {
                 <tr>
                   <th>이름</th>
                   <th>사번</th>
-                  <th>부서</th>
                   <th>상태</th>
                   <th>참여</th>
                 </tr>
@@ -343,7 +340,6 @@ export default function LeagueDraftPage() {
                   <tr key={`participant-${row.emp_id}`}>
                     <td>{row.name}</td>
                     <td>{row.emp_id}</td>
-                    <td>{row.department || "-"}</td>
                     <td>{row.member_status || "NORMAL"}</td>
                     <td>
                       {row.auto_excluded ? (
@@ -426,14 +422,13 @@ export default function LeagueDraftPage() {
               <tr>
                 <th>이름</th>
                 <th>사번</th>
-                <th>부서</th>
                 <th>지명</th>
               </tr>
             </thead>
             <tbody>
               {grouped.unassigned.length === 0 ? (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={3}>
                     <div className="empty-state py-8"><p className="empty-state-text">미배정 인원이 없습니다.</p></div>
                   </td>
                 </tr>
@@ -441,7 +436,6 @@ export default function LeagueDraftPage() {
                 <tr key={row.emp_id}>
                   <td>{row.name}</td>
                   <td>{row.emp_id}</td>
-                  <td>{row.department || "-"}</td>
                   <td>
                     {canDraft ? (
                       <button

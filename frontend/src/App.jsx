@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { Component, useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import Avatar from "./components/Avatar";
 import LoginPage      from "./pages/LoginPage";
 import DashboardPage  from "./pages/DashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
@@ -14,6 +16,8 @@ import ScoreSheetPage from "./pages/ScoreSheetPage";
 import ScoreSheetViewPage from "./pages/ScoreSheetViewPage";
 import LeagueViewPage from "./pages/LeagueViewPage";
 import LeagueDraftPage from "./pages/LeagueDraftPage";
+import MembersPage from "./pages/MembersPage";
+import MyProfilePage from "./pages/MyProfilePage";
 
 // ── Error boundary (prevents full white-screen crashes) ───────────────────────
 class RouteErrorBoundary extends Component {
@@ -79,9 +83,17 @@ function UserBanner() {
           <span className={`badge text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
             {badge.label}
           </span>
-          <span className="text-sm font-semibold text-gray-700 max-w-[120px] truncate">
-            {user?.name}
-          </span>
+          <button
+            type="button"
+            onClick={() => navigate("/profile")}
+            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+            title="내 정보 수정"
+          >
+            <Avatar name={user?.name} avatarUrl={user?.avatar_url} size="sm" />
+            <span className="text-sm font-semibold text-gray-700 max-w-[100px] truncate">
+              {user?.name}
+            </span>
+          </button>
           <button
             onClick={handleLogout}
             className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${
@@ -237,6 +249,22 @@ function AppRoutes() {
             </PageLayout>
           } />
 
+          <Route path="/members" element={
+            <PageLayout label="🔍 회원 검색" scrollable>
+              <RouteErrorBoundary>
+                <MembersPage />
+              </RouteErrorBoundary>
+            </PageLayout>
+          } />
+
+          <Route path="/profile" element={
+            <PageLayout label="👤 내 정보 수정" scrollable>
+              <RouteErrorBoundary>
+                <MyProfilePage />
+              </RouteErrorBoundary>
+            </PageLayout>
+          } />
+
           {/* ── ADD FEATURE ROUTES BELOW ────────────────────────────
               Pattern for a scrollable full-width page:
 
@@ -311,13 +339,17 @@ function AndroidBackButtonHandler() {
   return null;
 }
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AndroidBackButtonHandler />
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AndroidBackButtonHandler />
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }

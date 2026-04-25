@@ -76,6 +76,14 @@ class User(Base):
     is_resigned  = Column(Boolean, default=False, nullable=True)
     resigned_date = Column(Date,   nullable=True)
 
+    # Profile info
+    birth_year = Column(Integer, nullable=True, comment="출생연도 (나이 계산용)")
+    position   = Column(String(20), nullable=True, comment="농구 포지션 (PG/SG/SF/PF/C 등)")
+    avatar_url = Column(String(300), nullable=True, comment="프로필 사진 경로")
+
+    # Social login
+    google_id = Column(String(200), nullable=True, unique=True, comment="Google OAuth sub (unique ID)")
+
     # Global reader / VIP flag — DB-managed instead of hard-coded names
     is_vip = Column(Boolean, default=False, nullable=False)
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
 
@@ -29,8 +30,10 @@ function PwStrength({ pw }) {
   );
 }
 
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
 export default function LoginPage() {
-  const { login, user, updateUser } = useAuth();
+  const { login, loginWithGoogle, user, updateUser } = useAuth();
 
   const [nameId, setNameId]           = useState("");
   const [pw, setPw]                   = useState("");
@@ -76,6 +79,28 @@ export default function LoginPage() {
         setErr("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
       } else {
         setErr("로그인에 실패했습니다. 다시 시도해주세요.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSuccess(credentialResponse) {
+    setErr("");
+    setLoading(true);
+    try {
+      await loginWithGoogle(credentialResponse.credential);
+      const redirect = sessionStorage.getItem("loginRedirect");
+      sessionStorage.removeItem("loginRedirect");
+      window.location.replace(redirect || "/");
+    } catch (e) {
+      const status = e.response?.status;
+      if (status === 403) {
+        setErr("비활성화된 계정입니다. 관리자에게 문의하세요.");
+      } else if (status === 503) {
+        setErr("Google 로그인이 서버에 설정되지 않았습니다. 관리자에게 문의하세요.");
+      } else {
+        setErr(e.response?.data?.detail || "Google 로그인에 실패했습니다. 다시 시도해주세요.");
       }
     } finally {
       setLoading(false);
@@ -196,6 +221,27 @@ export default function LoginPage() {
         <p className="mt-3 text-xs text-gray-400">
           비밀번호 분실 시 관리자에게 임시 비밀번호 발급을 요청하세요.
         </p>
+
+        {GOOGLE_ENABLED && (
+          <>
+            <div className="flex items-center gap-3 my-5">
+              <span className="flex-1 border-t border-gray-200" />
+              <span className="text-xs text-gray-400 shrink-0">또는</span>
+              <span className="flex-1 border-t border-gray-200" />
+            </div>
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setErr("Google 로그인에 실패했습니다. 다시 시도해주세요.")}
+                locale="ko"
+                text="signin_with"
+                shape="rectangular"
+                size="large"
+                width="100%"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <p className="mt-8 text-xs text-gray-300">© Your Company. All rights reserved.</p>

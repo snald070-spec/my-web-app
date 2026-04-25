@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File
 from sqlalchemy import or_, asc, desc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -6,8 +6,12 @@ from pydantic import BaseModel
 import logging
 import re
 import json
+import os
+import time
+from io import BytesIO
+from PIL import Image
 
-from auth import require_admin, has_master_access, hash_password, generate_temp_password
+from auth import require_admin, has_master_access, hash_password, generate_temp_password, get_current_user
 from database import get_db
 from utils.pagination import paginate
 import models
@@ -81,18 +85,16 @@ class UserRoleUpdate(BaseModel):
 class UserProfileUpdate(BaseModel):
     emp_id: str | None = None
     name: str | None = None
-    division: str | None = None
-    department: str
     email: str | None = None
     role: str
     is_vip: bool = False
+    birth_year: int | None = None
+    position: str | None = None
 
 
 class UserCreate(BaseModel):
     emp_id: str | None = None
     name: str | None = None
-    division: str | None = None
-    department: str
     email: str | None = None
     role: str = "USER"
     is_vip: bool = False
@@ -156,18 +158,37 @@ def _rekey_user_references(db: Session, old_emp_id: str, new_emp_id: str):
         {models.AttendanceReminderLog.sent_by: new_emp_id}, synchronize_session=False
     )
 
+    db.query(models.LeaguePlayerStat).filter(models.LeaguePlayerStat.emp_id == old_emp_id).update(
+        {models.LeaguePlayerStat.emp_id: new_emp_id}, synchronize_session=False
+    )
+    db.query(models.LeaguePlayerStat).filter(models.LeaguePlayerStat.entered_by == old_emp_id).update(
+        {models.LeaguePlayerStat.entered_by: new_emp_id}, synchronize_session=False
+    )
+
+    db.query(models.LeagueMatch).filter(models.LeagueMatch.confirmed_by == old_emp_id).update(
+        {models.LeagueMatch.confirmed_by: new_emp_id}, synchronize_session=False
+    )
+    db.query(models.LeagueMatch).filter(models.LeagueMatch.updated_by == old_emp_id).update(
+        {models.LeagueMatch.updated_by: new_emp_id}, synchronize_session=False
+    )
+
+    db.query(models.BankDepositEvent).filter(models.BankDepositEvent.matched_emp_id == old_emp_id).update(
+        {models.BankDepositEvent.matched_emp_id: new_emp_id}, synchronize_session=False
+    )
+
 
 def _serialize_user(user: models.User) -> dict:
     role = models.canonical_role(user.role)
     return {
         "emp_id": user.emp_id,
         "name": user.name,
-        "division": user.division,
-        "department": user.department,
         "email": user.email,
         "role": role.value,
         "is_resigned": bool(user.is_resigned),
         "is_vip": bool(user.is_vip),
+        "birth_year": user.birth_year,
+        "position": user.position,
+        "avatar_url": user.avatar_url,
     }
 
 
@@ -199,8 +220,7 @@ def create_user(
     user = models.User(
         emp_id=emp_id,
         name=(body.name or "").strip() or emp_id,
-        division=(body.division or "").strip() or None,
-        department=(body.department or "").strip(),
+        department="",
         email=(body.email or "").strip() or None,
         hashed_password=hash_password(temp_pw),
         role=role_value,
@@ -209,8 +229,8 @@ def create_user(
         is_vip=bool(body.is_vip),
     )
 
-    if not user.emp_id or not user.department:
-        raise HTTPException(status_code=400, detail="ID and department are required.")
+    if not user.emp_id:
+        raise HTTPException(status_code=400, detail="ID is required.")
 
     try:
         _append_audit_log(
@@ -307,8 +327,6 @@ def list_users(
                 models.User.emp_id.ilike(like),
                 models.User.name.ilike(like),
                 models.User.email.ilike(like),
-                models.User.department.ilike(like),
-                models.User.division.ilike(like),
             )
         )
 
@@ -396,6 +414,50 @@ def update_user_status(
     return _serialize_user(user)
 
 
+# ── Self-service profile update (name / birth_year / position) ───────────────
+
+class SelfProfileUpdate(BaseModel):
+    name: str | None = None
+    birth_year: int | None = None
+    position: str | None = None
+
+
+VALID_POSITIONS = {"PG", "SG", "SF", "PF", "C"}
+
+
+@router.patch("/me")
+def update_my_profile(
+    body: SelfProfileUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """로그인한 회원이 자신의 이름·나이·포지션을 수정합니다."""
+    user = db.query(models.User).filter(models.User.emp_id == current_user.emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+    if body.name is not None:
+        name = body.name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="이름은 비워둘 수 없습니다.")
+        user.name = name
+
+    if "birth_year" in body.model_fields_set:
+        if body.birth_year is not None and not (1940 <= body.birth_year <= 2015):
+            raise HTTPException(status_code=422, detail="출생연도가 올바르지 않습니다.")
+        user.birth_year = body.birth_year
+
+    if "position" in body.model_fields_set:
+        pos = (body.position or "").strip().upper() or None
+        if pos and pos not in VALID_POSITIONS:
+            raise HTTPException(status_code=422, detail="포지션 값이 올바르지 않습니다.")
+        user.position = pos
+
+    db.commit()
+    db.refresh(user)
+    return _serialize_user(user)
+
+
 @router.patch("/{emp_id}")
 def update_user_profile(
     emp_id: str,
@@ -439,14 +501,11 @@ def update_user_profile(
 
     user.emp_id = next_emp_id
     user.name = (body.name or "").strip() or user.name
-    dept = (body.department or "").strip()
-    if not dept:
-        raise HTTPException(status_code=400, detail="Department is required.")
-    user.department = dept
-    user.division = (body.division or "").strip() or None
     user.email = (body.email or "").strip() or None
     user.role = next_role
     user.is_vip = bool(body.is_vip)
+    user.birth_year = body.birth_year
+    user.position = (body.position or "").strip() or None
 
     try:
         _append_audit_log(
@@ -658,3 +717,163 @@ def issue_temp_password(
         "temp_password": temp_pw,
         "message": "Temporary password issued.",
     }
+
+
+@router.get("/public/members")
+def get_public_members(
+    _user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """로그인한 모든 회원이 볼 수 있는 활동 회원 목록 (커리어 평균 스탯 포함)."""
+    from datetime import date
+
+    members = (
+        db.query(models.User)
+        .filter(
+            models.User.is_resigned == False,
+            models.User.role != models.RoleEnum.MASTER,
+        )
+        .all()
+    )
+
+    # 커리어 스탯: emp_id별 집계
+    all_stats = (
+        db.query(models.LeaguePlayerStat)
+        .filter(models.LeaguePlayerStat.participated == True)
+        .all()
+    )
+
+    stat_agg: dict[str, dict] = {}
+    for s in all_stats:
+        key = s.emp_id
+        if key not in stat_agg:
+            stat_agg[key] = {"games": 0, "pts": 0, "reb": 0, "ast": 0, "stl": 0, "blk": 0}
+        row = stat_agg[key]
+        row["games"] += 1
+        row["pts"]   += s.fg2_made * 2 + s.fg3_made * 3 + s.ft_made
+        row["reb"]   += s.o_rebound + s.d_rebound
+        row["ast"]   += s.assist
+        row["stl"]   += s.steal
+        row["blk"]   += s.block
+
+    current_year = date.today().year
+
+    result = []
+    for m in members:
+        agg = stat_agg.get(m.emp_id)
+        g = agg["games"] if agg else 0
+
+        def avg(val):
+            return round(val / g, 1) if g > 0 else None
+
+        career_avg = {
+            "games":       g,
+            "avg_points":  avg(agg["pts"]) if agg else None,
+            "avg_rebound": avg(agg["reb"]) if agg else None,
+            "avg_assist":  avg(agg["ast"]) if agg else None,
+            "avg_steal":   avg(agg["stl"]) if agg else None,
+            "avg_block":   avg(agg["blk"]) if agg else None,
+        } if agg else None
+
+        result.append({
+            "emp_id":     m.emp_id,
+            "name":       m.name,
+            "birth_year": m.birth_year,
+            "age":        (current_year - m.birth_year) if m.birth_year else None,
+            "position":   m.position,
+            "avatar_url": m.avatar_url,
+            "career_avg": career_avg,
+        })
+
+    # 가나다 순 (한글 유니코드 코드포인트 기준 정렬)
+    result.sort(key=lambda r: r["name"] or "")
+    return result
+
+
+# ── Avatar upload / delete ────────────────────────────────────────────────────
+
+AVATAR_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "avatars")
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_AVATAR_BYTES = 5 * 1024 * 1024   # 5 MB
+AVATAR_MAX_PX    = 400               # 최대 가로/세로
+
+
+def _avatar_path(emp_id: str, ext: str) -> str:
+    safe = re.sub(r"[^\w\-]", "_", emp_id)
+    return os.path.join(AVATAR_DIR, f"{safe}{ext}")
+
+
+@router.post("/{emp_id}/avatar")
+async def upload_avatar(
+    emp_id: str,
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """프로필 사진 업로드 — 관리자는 전체, 일반 회원은 본인만."""
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+    is_admin = models.canonical_role(current_user.role) in (models.RoleEnum.MASTER, models.RoleEnum.ADMIN)
+    if not is_admin and current_user.emp_id != emp_id:
+        raise HTTPException(status_code=403, detail="본인 사진만 변경할 수 있습니다.")
+
+    content_type = (file.content_type or "").lower()
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail="JPG, PNG, WebP, GIF 파일만 허용됩니다.")
+
+    raw = await file.read()
+    if len(raw) > MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=400, detail="파일 크기는 5 MB 이하여야 합니다.")
+
+    # Resize & convert to JPEG via Pillow
+    try:
+        img = Image.open(BytesIO(raw)).convert("RGB")
+        img.thumbnail((AVATAR_MAX_PX, AVATAR_MAX_PX), Image.LANCZOS)
+    except Exception:
+        raise HTTPException(status_code=400, detail="이미지 파일을 읽을 수 없습니다.")
+
+    os.makedirs(AVATAR_DIR, exist_ok=True)
+
+    # Remove old avatar file if different extension
+    if user.avatar_url:
+        old_path = os.path.join(AVATAR_DIR, os.path.basename(user.avatar_url.split("?")[0]))
+        if os.path.isfile(old_path):
+            os.remove(old_path)
+
+    safe_id = re.sub(r"[^\w\-]", "_", emp_id)
+    filename = f"{safe_id}.jpg"
+    filepath = os.path.join(AVATAR_DIR, filename)
+    img.save(filepath, format="JPEG", quality=85, optimize=True)
+
+    avatar_url = f"/avatars/{filename}?v={int(time.time())}"
+    user.avatar_url = avatar_url
+    db.commit()
+
+    return {"avatar_url": avatar_url}
+
+
+@router.delete("/{emp_id}/avatar")
+def delete_avatar(
+    emp_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """프로필 사진 삭제 — 관리자는 전체, 일반 회원은 본인만."""
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+    is_admin = models.canonical_role(current_user.role) in (models.RoleEnum.MASTER, models.RoleEnum.ADMIN)
+    if not is_admin and current_user.emp_id != emp_id:
+        raise HTTPException(status_code=403, detail="본인 사진만 삭제할 수 있습니다.")
+
+    if user.avatar_url:
+        filepath = os.path.join(AVATAR_DIR, os.path.basename(user.avatar_url.split("?")[0]))
+        if os.path.isfile(filepath):
+            os.remove(filepath)
+        user.avatar_url = None
+        db.commit()
+
+    return {"message": "사진이 삭제되었습니다."}

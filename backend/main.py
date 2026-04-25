@@ -47,7 +47,22 @@ def _ensure_league_team_assignment_columns():
         conn.execute(text("ALTER TABLE league_team_assignments ADD COLUMN is_captain BOOLEAN NOT NULL DEFAULT 0"))
 
 
+def _ensure_user_profile_columns():
+    inspector = inspect(engine)
+    columns = {col["name"] for col in inspector.get_columns("users")}
+    with engine.begin() as conn:
+        if "birth_year" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN birth_year INTEGER"))
+        if "position" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN position VARCHAR(20)"))
+        if "avatar_url" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(300)"))
+        if "google_id" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR(200)"))
+
+
 _ensure_league_team_assignment_columns()
+_ensure_user_profile_columns()
 
 
 @asynccontextmanager
@@ -215,17 +230,18 @@ async def add_security_headers(request: Request, call_next):
         "camera=(), microphone=(), geolocation=(), payment=(), "
         "usb=(), bluetooth=(), accelerometer=(), gyroscope=()"
     )
-    connect_src = f"'self' {_CSP_CONNECT_SRC}".strip()
+    connect_src = f"'self' https://accounts.google.com https://oauth2.googleapis.com {_CSP_CONNECT_SRC}".strip()
     response.headers["Content-Security-Policy"] = (
         f"default-src 'self'; "
-        f"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-        f"style-src 'self' 'unsafe-inline'; "
+        f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; "
+        f"style-src 'self' 'unsafe-inline' https://accounts.google.com; "
         f"img-src 'self' data: blob: https:; "
         f"connect-src {connect_src}; "
         f"font-src 'self' data:; "
         f"object-src 'none'; "
         f"base-uri 'self'; "
         f"form-action 'self'; "
+        f"frame-src https://accounts.google.com; "
         f"frame-ancestors 'none';"
     )
     if _is_production:
@@ -327,6 +343,9 @@ def login(
         "role":          role.value,
         "is_first_login": user.is_first_login,
         "is_vip":        user.is_vip,
+        "birth_year":    user.birth_year,
+        "position":      user.position,
+        "avatar_url":    user.avatar_url,
     }
 
 
@@ -345,6 +364,9 @@ def me(
         "role":          role.value,
         "is_first_login": current_user.is_first_login,
         "is_vip":        current_user.is_vip,
+        "birth_year":    current_user.birth_year,
+        "position":      current_user.position,
+        "avatar_url":    current_user.avatar_url,
     }
 
 
@@ -401,6 +423,112 @@ def change_password(
     return {"message": "Password changed successfully."}
 
 
+class GoogleLoginRequest(BaseModel):
+    credential: str  # Google ID token (JWT) from frontend
+
+
+@app.post("/api/auth/google")
+def google_login(
+    body: GoogleLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """Google OAuth 로그인. 프론트에서 받은 Google ID token을 검증 후 자체 JWT 발급."""
+    google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+    if not google_client_id:
+        raise HTTPException(status_code=503, detail="Google 로그인이 서버에 설정되지 않았습니다. 관리자에게 문의하세요.")
+
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        id_info = google_id_token.verify_oauth2_token(
+            body.credential,
+            google_requests.Request(),
+            google_client_id,
+        )
+    except Exception as e:
+        logger.warning("Google token verification failed: %s", e)
+        raise HTTPException(status_code=401, detail="Google 인증에 실패했습니다. 다시 시도해주세요.")
+
+    google_sub = id_info.get("sub", "")
+    google_email = (id_info.get("email") or "").strip().lower()
+    google_name = (id_info.get("name") or id_info.get("given_name") or "").strip()
+
+    if not google_sub:
+        raise HTTPException(status_code=401, detail="Google 계정 정보를 가져올 수 없습니다.")
+
+    # 1) google_id로 기존 연동 계정 조회
+    user = db.query(models.User).filter(models.User.google_id == google_sub).first()
+
+    # 2) google_id 없으면 이메일로 기존 계정 조회 (이메일 연동)
+    if not user and google_email:
+        user = db.query(models.User).filter(models.User.email == google_email).first()
+        if user:
+            if getattr(user, "is_resigned", False):
+                raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의하세요.")
+            user.google_id = google_sub
+            try:
+                db.commit()
+            except SQLAlchemyError:
+                db.rollback()
+
+    # 3) 계정 없으면 자동 가입
+    if not user:
+        # emp_id 생성: 이름 기반 (중복 시 B, C, D... 접미사)
+        import re
+        base = re.sub(r"\s+", "", (google_name or "google").lower().strip()) or "google"
+        emp_id = base
+        suffix_ord = ord('B')
+        while db.query(models.User).filter(models.User.emp_id == emp_id).first():
+            emp_id = base + chr(suffix_ord).lower()
+            suffix_ord += 1
+            if suffix_ord > ord('Z'):
+                import secrets
+                emp_id = base + secrets.token_hex(3)
+                break
+
+        import secrets as _secrets
+        user = models.User(
+            emp_id=emp_id,
+            name=google_name or google_email,
+            email=google_email or None,
+            department="",
+            hashed_password=hash_password(_secrets.token_urlsafe(32)),
+            role=models.RoleEnum.GENERAL,
+            is_first_login=False,
+            google_id=google_sub,
+        )
+        try:
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            logger.info("Google 신규 가입: emp_id=%s email=%s", user.emp_id, google_email)
+        except SQLAlchemyError:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="계정 생성 중 오류가 발생했습니다.")
+
+    if getattr(user, "is_resigned", False):
+        raise HTTPException(status_code=403, detail="비활성화된 계정입니다. 관리자에게 문의하세요.")
+
+    token = create_access_token({"sub": user.emp_id})
+    role = models.canonical_role(user.role)
+    return {
+        "access_token":   token,
+        "token_type":     "bearer",
+        "expires_in":     ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "emp_id":         user.emp_id,
+        "name":           user.name,
+        "department":     user.department,
+        "division":       getattr(user, "division", None),
+        "email":          user.email,
+        "role":           role.value,
+        "is_first_login": False,
+        "is_vip":         bool(user.is_vip),
+        "birth_year":     user.birth_year,
+        "position":       user.position,
+        "avatar_url":     user.avatar_url,
+    }
+
+
 @app.post("/api/auth/refresh")
 def refresh_token(current_user: models.User = Depends(get_current_user)):
     """Issue a fresh JWT for a still-valid token (proactive client-side renewal)."""
@@ -418,6 +546,9 @@ def refresh_token(current_user: models.User = Depends(get_current_user)):
         "role":          role.value,
         "is_first_login": current_user.is_first_login,
         "is_vip":        current_user.is_vip,
+        "birth_year":    current_user.birth_year,
+        "position":      current_user.position,
+        "avatar_url":    current_user.avatar_url,
     }
 
 

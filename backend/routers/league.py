@@ -800,6 +800,7 @@ def get_league_standings(
                     "goals_for": r["goals_for"],
                     "goals_against": r["goals_against"],
                     "goal_diff": r["goal_diff"],
+                    "head_to_head": json.loads(r.get("head_to_head_json") or "{}"),
                 }
                 for r in rows
             ],
@@ -2163,7 +2164,7 @@ def draft_assign_member(
         pick_no=turn["pick_no"],
         team_code=target_team,
         selected_emp_id=user.emp_id,
-        selected_name=user.emp_id,
+        selected_name=user.name or user.emp_id,
         is_skipped=False,
         picked_by=current_user.emp_id,
         picked_at=datetime.now(),
@@ -2430,6 +2431,118 @@ def public_get_player_stats(
 
     result = sorted(agg.values(), key=lambda r: r["total_points"], reverse=True)
     return result
+
+
+def _build_stat_row(games: int, totals: dict) -> dict:
+    """Compute per-game averages and shooting percentages from totals."""
+    g = games or 1  # avoid division by zero
+    pts = totals["total_points"]
+    reb = totals["o_rebound"] + totals["d_rebound"]
+
+    def pct(made, att):
+        return round(made / att * 100, 1) if att > 0 else None
+
+    return {
+        **totals,
+        "games": games,
+        "avg_points":  round(pts / g, 1),
+        "avg_rebound": round(reb / g, 1),
+        "avg_assist":  round(totals["assist"]   / g, 1),
+        "avg_steal":   round(totals["steal"]    / g, 1),
+        "avg_block":   round(totals["block"]    / g, 1),
+        "avg_turnover":round(totals["turnover"] / g, 1),
+        "fg2_pct": pct(totals["fg2_made"], totals["fg2_attempted"]),
+        "fg3_pct": pct(totals["fg3_made"], totals["fg3_attempted"]),
+        "ft_pct":  pct(totals["ft_made"],  totals["ft_attempted"]),
+    }
+
+
+@router.get("/public/players/{emp_id}/stats")
+def public_get_player_career_stats(
+    emp_id: str,
+    _user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """커리어 전체 및 시즌별 누적/평균 스탯."""
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+    all_stats = (
+        db.query(models.LeaguePlayerStat)
+        .filter(
+            models.LeaguePlayerStat.emp_id == emp_id,
+            models.LeaguePlayerStat.participated == True,
+        )
+        .all()
+    )
+
+    STAT_KEYS = [
+        "fg2_made", "fg2_attempted", "fg3_made", "fg3_attempted",
+        "ft_made", "ft_attempted", "o_rebound", "d_rebound",
+        "assist", "steal", "block", "foul", "turnover", "total_points",
+    ]
+
+    def empty_totals():
+        return {k: 0 for k in STAT_KEYS}
+
+    # Per-season aggregation
+    season_agg: dict[int, dict] = {}
+    career_totals = empty_totals()
+    career_games = 0
+    display_name = user.name
+
+    for s in all_stats:
+        if s.name:
+            display_name = s.name
+        pts = s.fg2_made * 2 + s.fg3_made * 3 + s.ft_made
+
+        # Career
+        career_games += 1
+        for k in STAT_KEYS[:-1]:  # exclude total_points
+            career_totals[k] += getattr(s, k)
+        career_totals["total_points"] += pts
+
+        # Season bucket
+        sid = s.season_id
+        if sid not in season_agg:
+            season_agg[sid] = {"games": 0, "team_code": s.team_code.value, **empty_totals()}
+        row = season_agg[sid]
+        row["games"] += 1
+        if s.team_code:
+            row["team_code"] = s.team_code.value
+        for k in STAT_KEYS[:-1]:
+            row[k] += getattr(s, k)
+        row["total_points"] += pts
+
+    # Fetch season metadata for matched season IDs
+    seasons_meta: dict[int, models.LeagueSeason] = {}
+    if season_agg:
+        for season in db.query(models.LeagueSeason).filter(
+            models.LeagueSeason.id.in_(list(season_agg.keys()))
+        ).all():
+            seasons_meta[season.id] = season
+
+    seasons_result = []
+    for sid, row in sorted(season_agg.items(), reverse=True):
+        meta = seasons_meta.get(sid)
+        g = row.pop("games")
+        team_code = row.pop("team_code")
+        seasons_result.append({
+            "season_id":    sid,
+            "season_code":  meta.code  if meta else str(sid),
+            "season_title": meta.title if meta else str(sid),
+            "team_code":    team_code,
+            **_build_stat_row(g, row),
+        })
+
+    return {
+        "emp_id":     emp_id,
+        "name":       display_name,
+        "avatar_url": user.avatar_url,
+        "career": _build_stat_row(career_games, career_totals) if career_games > 0 else None,
+        "seasons": seasons_result,
+    }
 
 
 @router.get("/public/scoresheets/catalog")
