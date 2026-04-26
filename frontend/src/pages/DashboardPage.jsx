@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 import { PreviewToggleButton, PreviewModeBanner } from "../components/EmployeePreviewToggle";
 import PlayerCareerModal from "../components/PlayerCareerModal";
 import api from "../api";
+import { getNotificationStatus, requestAndSubscribe } from "../services/notificationService";
 
 /** Reusable stat card */
 function StatCard({ label, value, icon, colour = "blue", to }) {
@@ -40,6 +41,8 @@ function AdminView({ onPreview }) {
   const [alertMsg, setAlertMsg] = useState("");
   const [statsEmpId, setStatsEmpId] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [notifStatus, setNotifStatus] = useState(null);
+  const [enablingNotif, setEnablingNotif] = useState(false);
 
   useEffect(() => {
     api.get("/api/dashboard/admin-stats")
@@ -53,6 +56,22 @@ function AdminView({ onPreview }) {
       .then(r => setPendingCount(r.data?.count ?? 0))
       .catch(() => {});
   }, [user?.role]);
+
+  useEffect(() => {
+    if (user?.role !== "MASTER") return;
+    getNotificationStatus().then(setNotifStatus);
+  }, [user?.role]);
+
+  async function handleEnableNotifications() {
+    setEnablingNotif(true);
+    const result = await requestAndSubscribe();
+    if (result.ok) {
+      setNotifStatus("subscribed");
+    } else if (result.reason === "denied") {
+      setNotifStatus("denied");
+    }
+    setEnablingNotif(false);
+  }
 
   async function handleAcknowledgeNonFeeAlerts() {
     try {
@@ -111,6 +130,31 @@ function AdminView({ onPreview }) {
             <div className="mt-3">
               <Link to="/admin/users" className="btn-primary btn btn-sm">회원 관리에서 승인하기</Link>
             </div>
+          </div>
+        )}
+
+        {user?.role === "MASTER" && notifStatus === "default" && (
+          <div className="text-left rounded-xl border border-blue-200 bg-blue-50 p-4 mb-4">
+            <p className="text-sm font-bold text-blue-700">알림을 켜면 승인 요청을 바로 받을 수 있어요</p>
+            <p className="text-xs text-blue-600 mt-1">
+              새 회원 가입 신청이 들어오면 즉시 모바일 알림으로 알려드립니다.
+            </p>
+            <button
+              className="mt-3 btn-primary btn btn-sm disabled:opacity-60"
+              onClick={handleEnableNotifications}
+              disabled={enablingNotif}
+            >
+              {enablingNotif ? "설정 중..." : "알림 켜기"}
+            </button>
+          </div>
+        )}
+
+        {user?.role === "MASTER" && notifStatus === "denied" && (
+          <div className="text-left rounded-xl border border-slate-200 bg-slate-50 p-4 mb-4">
+            <p className="text-sm font-bold text-slate-600">알림이 차단되어 있습니다</p>
+            <p className="text-xs text-slate-500 mt-1">
+              브라우저 설정 → 이 사이트 → 알림 허용으로 변경해주세요.
+            </p>
           </div>
         )}
 

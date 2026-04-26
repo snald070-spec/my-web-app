@@ -70,3 +70,26 @@ export async function unsubscribe() {
 export function isSubscribed() {
   return localStorage.getItem('pushSubscribed') === '1'
 }
+
+/**
+ * 현재 브라우저의 push 알림 상태를 반환.
+ * 'unsupported' | 'denied' | 'subscribed' | 'default'
+ */
+export async function getNotificationStatus() {
+  if (
+    !('Notification' in window) ||
+    !('PushManager' in window) ||
+    !('serviceWorker' in navigator)
+  ) {
+    return 'unsupported'
+  }
+  if (Notification.permission === 'denied') return 'denied'
+  if (Notification.permission === 'granted') {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.getSubscription()
+      if (sub) return 'subscribed'
+    } catch {}
+  }
+  return 'default'
+}

@@ -12,8 +12,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || '🏀 Draw'
   const options = {
     body: payload.body || '',
-    icon: '/icon-192.svg',
-    badge: '/icon-192.svg',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     data: { url: payload.url || '/' },
     vibrate: [200, 100, 200],
   }

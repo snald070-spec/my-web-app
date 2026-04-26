@@ -2,6 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
 import Avatar from "../components/Avatar";
+import {
+  getNotificationStatus,
+  requestAndSubscribe,
+  unsubscribe as unsubscribePush,
+} from "../services/notificationService";
 
 const POSITIONS = [
   { value: "PG", label: "PG - 포인트가드" },
@@ -30,10 +35,35 @@ export default function MyProfilePage() {
   const [saveMsg,  setSaveMsg]  = useState("");
   const [saveErr,  setSaveErr]  = useState("");
 
+  const [notifStatus,   setNotifStatus]   = useState(null);
+  const [notifLoading,  setNotifLoading]  = useState(false);
+
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview,   setAvatarPreview]   = useState(user?.avatar_url ?? null);
   const [avatarErr,       setAvatarErr]       = useState("");
   const avatarInputRef = useRef(null);
+
+  useEffect(() => {
+    getNotificationStatus().then(setNotifStatus);
+  }, []);
+
+  async function handleEnableNotif() {
+    setNotifLoading(true);
+    const result = await requestAndSubscribe();
+    if (result.ok) {
+      setNotifStatus("subscribed");
+    } else if (result.reason === "denied") {
+      setNotifStatus("denied");
+    }
+    setNotifLoading(false);
+  }
+
+  async function handleDisableNotif() {
+    setNotifLoading(true);
+    await unsubscribePush();
+    setNotifStatus("default");
+    setNotifLoading(false);
+  }
 
   // 페이지 진입 시 최신 프로필 로드
   useEffect(() => {
@@ -250,6 +280,60 @@ export default function MyProfilePage() {
           {saving ? "저장 중..." : "저장하기"}
         </button>
       </form>
+      {/* 알림 설정 */}
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-3">
+        <h2 className="text-sm font-bold text-slate-700">알림 설정</h2>
+
+        {notifStatus === null && (
+          <p className="text-xs text-slate-400">알림 상태 확인 중...</p>
+        )}
+
+        {notifStatus === "unsupported" && (
+          <p className="text-xs text-slate-500">이 브라우저는 푸시 알림을 지원하지 않습니다.</p>
+        )}
+
+        {notifStatus === "denied" && (
+          <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-2.5">
+            <p className="text-sm font-semibold text-red-600">알림이 차단되어 있습니다</p>
+            <p className="text-xs text-red-500 mt-0.5">
+              브라우저 설정 → 이 사이트 → 알림을 "허용"으로 변경 후 다시 시도해주세요.
+            </p>
+          </div>
+        )}
+
+        {notifStatus === "subscribed" && (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-green-600">알림 켜짐</p>
+              <p className="text-xs text-slate-500 mt-0.5">가입 신청 등 중요 이벤트 알림을 받습니다.</p>
+            </div>
+            <button
+              onClick={handleDisableNotif}
+              disabled={notifLoading}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+            >
+              {notifLoading ? "처리 중..." : "알림 끄기"}
+            </button>
+          </div>
+        )}
+
+        {notifStatus === "default" && (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-500">알림 꺼짐</p>
+              <p className="text-xs text-slate-400 mt-0.5">알림을 켜면 중요 이벤트를 바로 받을 수 있어요.</p>
+            </div>
+            <button
+              onClick={handleEnableNotif}
+              disabled={notifLoading}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors"
+            >
+              {notifLoading ? "설정 중..." : "알림 켜기"}
+            </button>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
