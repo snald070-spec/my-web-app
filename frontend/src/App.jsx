@@ -6,6 +6,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Avatar from "./components/Avatar";
 import UpdateBanner from "./components/UpdateBanner";
+import InstallBanner from "./components/InstallBanner";
 import LoginPage      from "./pages/LoginPage";
 import DashboardPage  from "./pages/DashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
@@ -399,6 +400,7 @@ export default function App() {
           <GoogleOAuthRedirectHandler />
           <AppRoutes />
           <UpdateBanner />
+          <InstallBanner />
         </AuthProvider>
       </BrowserRouter>
     </GoogleOAuthProvider>
