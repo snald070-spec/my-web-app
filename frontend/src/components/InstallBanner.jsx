@@ -74,7 +74,7 @@ export default function InstallBanner() {
 
   if (!visible) return null
 
-  // ── 삼성 인터넷: 메뉴 → 홈 화면에 추가 ───────────────────────────────────
+  // ── 삼성 인터넷: 홈 화면에 추가 ──────────────────────────────────────────
   if (mode === 'samsung-manual') {
     return (
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
@@ -86,10 +86,17 @@ export default function InstallBanner() {
             </div>
             <button onClick={dismiss} className="text-gray-400 hover:text-white text-lg leading-none shrink-0">✕</button>
           </div>
+          {/* 방법 1: 주소창 설치 아이콘 */}
+          <p className="text-xs text-gray-300 leading-relaxed mb-1.5">
+            <span className="text-white font-semibold">방법 1</span> —{' '}
+            주소창 오른쪽 <span className="text-white font-semibold">⊕ 아이콘</span> 탭 → 추가
+          </p>
+          {/* 방법 2: 메뉴 */}
           <p className="text-xs text-gray-300 leading-relaxed">
-            화면 하단 <span className="text-white font-semibold">≡ 메뉴</span> 탭 →{' '}
-            <span className="text-white font-semibold">+</span> 추가 →{' '}
-            <span className="text-white font-semibold">홈 화면</span> 선택
+            <span className="text-white font-semibold">방법 2</span> —{' '}
+            하단 우측 <span className="text-white font-semibold">⋮</span> 탭 →{' '}
+            <span className="text-white font-semibold">페이지 추가</span> →{' '}
+            <span className="text-white font-semibold">홈 화면</span>
           </p>
         </div>
       </div>
@@ -114,8 +121,8 @@ export default function InstallBanner() {
             <p className="text-xs font-bold text-blue-200 mb-1">✅ 권장 방법 (Play Protect 없음)</p>
             <p className="text-xs text-white leading-relaxed">
               <span className="font-semibold">삼성 인터넷</span> 앱으로 접속 →{' '}
-              하단 <span className="font-semibold">≡</span> →{' '}
-              추가 → <span className="font-semibold">홈 화면</span>
+              하단 <span className="font-semibold">⋮</span> →{' '}
+              페이지 추가 → <span className="font-semibold">홈 화면</span>
             </p>
           </div>
 
