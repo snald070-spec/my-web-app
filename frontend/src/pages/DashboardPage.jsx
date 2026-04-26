@@ -215,7 +215,7 @@ function ModuleCard({ icon, title, description, to, onClick, colour = "blue" }) 
         {icon}
       </div>
       <p className="font-bold text-gray-800 text-sm leading-tight">{title}</p>
-      <p className="text-xs text-gray-400 mt-1 leading-relaxed line-clamp-2">{description}</p>
+      <p className="text-xs text-gray-600 mt-1 leading-relaxed line-clamp-2">{description}</p>
     </>
   );
   const cardCls = "card p-4 flex flex-col items-center text-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 aspect-square justify-center";
