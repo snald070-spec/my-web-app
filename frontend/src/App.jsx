@@ -81,9 +81,7 @@ function UserBanner() {
   return (
     <div className="shrink-0 bg-white border-b border-gray-100">
       <div className="px-3 sm:px-6 py-2 flex items-center justify-between gap-3">
-        <span className="text-sm font-extrabold text-blue-600 tracking-tight select-none">
-          🏀 Draw
-        </span>
+        <img src="/icon-192.png" alt="Draw" className="h-8 w-8 object-contain" />
         <div className="flex items-center gap-2">
           <span className={`badge text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
             {badge.label}
