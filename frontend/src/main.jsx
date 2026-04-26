@@ -4,16 +4,16 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 
-// Service Worker 등록 — autoUpdate 모드로 백그라운드 업데이트
-// updateSW 함수는 UpdateBanner 컴포넌트에서 사용
+// Service Worker 등록 — 새 버전 감지 시 UpdateBanner 에 알림
+// _updateReady: React 마운트 전에 이벤트가 발화해도 유실되지 않도록 모듈 변수로 보존
+export let _updateReady = false
+
 export const updateSW = registerSW({
   onNeedRefresh() {
-    // 새 버전 감지 → window 이벤트로 전파 (UpdateBanner 가 수신)
+    _updateReady = true
     window.dispatchEvent(new CustomEvent('pwa-update-available'))
   },
-  onOfflineReady() {
-    console.log('[PWA] 오프라인 준비 완료')
-  },
+  onOfflineReady() {},
 })
 
 createRoot(document.getElementById('root')).render(
