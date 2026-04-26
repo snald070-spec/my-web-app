@@ -270,20 +270,17 @@ export default function LoginPage() {
           {loading ? "로그인 중..." : "로그인"}
         </button>
 
+        <button
+          type="button"
+          onClick={() => { window.location.href = "/signup"; }}
+          className="mt-2 w-full py-2.5 rounded-xl border-2 border-blue-500 text-blue-600 font-semibold text-sm hover:bg-blue-50 active:bg-blue-100 transition-colors"
+        >
+          회원가입
+        </button>
+
         <p className="mt-3 text-xs text-gray-400">
           비밀번호 분실 시 관리자에게 임시 비밀번호 발급을 요청하세요.
         </p>
-
-        <div className="mt-4 flex items-center justify-center gap-1 text-sm">
-          <span className="text-gray-400">처음 오셨나요?</span>
-          <a
-            href="/signup"
-            className="text-blue-600 font-semibold hover:underline"
-            onClick={e => { e.preventDefault(); window.location.href = "/signup"; }}
-          >
-            회원가입
-          </a>
-        </div>
 
         {GOOGLE_ENABLED && (
           <>
