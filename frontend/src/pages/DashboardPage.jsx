@@ -64,47 +64,49 @@ function AdminView({ onPreview }) {
       )}
       <PreviewToggleButton onPreview={onPreview} />
 
-      <div className="page-header">
-        <h1 className="page-title">🏢 Draw Basketball Team 관리자 대시보드</h1>
-        <p className="page-subtitle">포털 전체 현황입니다.</p>
-      </div>
-
-
-
-      {user?.role === "MASTER" && (stats?.non_fee_deposit_alerts_today || 0) > 0 && (
-        <div className="card border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-bold text-red-700">회비 외 입금 내역이 확인되었습니다.</p>
-          <p className="text-xs text-red-600 mt-1">
-            오늘 감지 건수: {stats?.non_fee_deposit_alerts_today}건 (전체 누적: {stats?.non_fee_deposit_alerts}건)
-          </p>
-          <div className="mt-3 space-y-1">
-            {(stats?.recent_non_fee_deposits || []).slice(0, 3).map((r) => (
-              <p key={r.id} className="text-xs text-red-700">
-                {r.depositor_name} / {Number(r.amount || 0).toLocaleString("ko-KR")}원 / {r.year_month}
-              </p>
-            ))}
-          </div>
-          <div className="mt-3 flex gap-2">
-            <Link to="/fees" className="btn-primary btn btn-sm">회비 관리에서 확인</Link>
-            <button className="btn-secondary btn btn-sm" onClick={handleAcknowledgeNonFeeAlerts}>오늘 알림 확인 처리</button>
-          </div>
-          {alertMsg && <p className="mt-2 text-xs text-red-700">{alertMsg}</p>}
+      <div className="card px-6 py-8 text-center max-w-lg mx-auto">
+        <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
+          🏢
         </div>
-      )}
+        <h1 className="text-xl font-bold text-gray-800 mb-1">
+          {user?.name}님, 환영합니다!
+        </h1>
+        <p className="text-sm text-gray-500 mb-4">Draw Basketball Team 관리자</p>
 
-      {/* Module card grid — add a card per feature */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
-        <ModuleCard icon="👥" title="회원 관리"     description="전체 계정 조회 · 상태 관리"          to="/admin/users"            colour="blue"   />
-        <ModuleCard icon="📢" title="공지사항"     description="최신 운영 공지 작성 · 확인"           to="/notices"                colour="green"  />
-        <ModuleCard icon="💳" title="회비 관리"    description="회비 납부 현황 · 납부 처리"            to="/fees"                   colour="amber"  />
-        <ModuleCard icon="🔔" title="회비 납부 알림" description="알림 대상 조회 · 발송 기록"          to="/fees"                   colour="orange" />
-        <ModuleCard icon="🗳️" title="출석 투표"    description="출석 일정 생성 · 누적 출석 관리"       to="/attendance"             colour="purple" />
-        <ModuleCard icon="🏆" title="리그전 운영"   description="시즌 · 경기 결과 · 주차별 순위"        to="/league"                 colour="indigo" />
-        <ModuleCard icon="📋" title="경기 기록지"   description="실시간 선수별 스탯 입력"              to="/league/scoresheet"      colour="teal"   />
-        <ModuleCard icon="📄" title="기록지 조회"   description="저장된 경기 기록 · 분석 조회"         to="/league/scoresheet/view" colour="cyan"   />
-        <ModuleCard icon="🔍" title="회원 검색"    description="활동 회원 목록 · 커리어 스탯"          to="/members"                colour="pink"   />
-        <ModuleCard icon="📊" title="내 스탯 보기"  description="커리어 통산 · 시즌별 기록"            onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
-        <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진 · 이름 · 포지션"          to="/profile"                colour="rose"   />
+        {user?.role === "MASTER" && (stats?.non_fee_deposit_alerts_today || 0) > 0 && (
+          <div className="text-left rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
+            <p className="text-sm font-bold text-red-700">회비 외 입금 내역이 확인되었습니다.</p>
+            <p className="text-xs text-red-600 mt-1">
+              오늘 감지 건수: {stats?.non_fee_deposit_alerts_today}건 (전체 누적: {stats?.non_fee_deposit_alerts}건)
+            </p>
+            <div className="mt-2 space-y-1">
+              {(stats?.recent_non_fee_deposits || []).slice(0, 3).map((r) => (
+                <p key={r.id} className="text-xs text-red-700">
+                  {r.depositor_name} / {Number(r.amount || 0).toLocaleString("ko-KR")}원 / {r.year_month}
+                </p>
+              ))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Link to="/fees" className="btn-primary btn btn-sm">회비 관리에서 확인</Link>
+              <button className="btn-secondary btn btn-sm" onClick={handleAcknowledgeNonFeeAlerts}>오늘 알림 확인 처리</button>
+            </div>
+            {alertMsg && <p className="mt-2 text-xs text-red-700">{alertMsg}</p>}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <ModuleCard icon="👥" title="회원 관리"     description="전체 계정 조회 · 상태 관리"        to="/admin/users"            colour="blue"   />
+          <ModuleCard icon="📢" title="공지사항"      description="최신 운영 공지 작성 · 확인"         to="/notices"                colour="green"  />
+          <ModuleCard icon="💳" title="회비 관리"     description="회비 납부 현황 · 납부 처리"          to="/fees"                   colour="amber"  />
+          <ModuleCard icon="🔔" title="회비 납부 알림" description="알림 대상 조회 · 발송 기록"         to="/fees"                   colour="orange" />
+          <ModuleCard icon="🗳️" title="출석 투표"     description="출석 일정 생성 · 누적 출석 관리"     to="/attendance"             colour="purple" />
+          <ModuleCard icon="🏆" title="리그전 운영"    description="시즌 · 경기 결과 · 주차별 순위"      to="/league"                 colour="indigo" />
+          <ModuleCard icon="📋" title="경기 기록지"    description="실시간 선수별 스탯 입력"            to="/league/scoresheet"      colour="teal"   />
+          <ModuleCard icon="📄" title="기록지 조회"    description="저장된 경기 기록 · 분석 조회"        to="/league/scoresheet/view" colour="cyan"   />
+          <ModuleCard icon="🔍" title="회원 검색"     description="활동 회원 목록 · 커리어 스탯"        to="/members"                colour="pink"   />
+          <ModuleCard icon="📊" title="내 스탯 보기"   description="커리어 통산 · 시즌별 기록"          onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
+          <ModuleCard icon="👤" title="내 정보 수정"   description="프로필 사진 · 이름 · 포지션"        to="/profile"                colour="rose"   />
+        </div>
       </div>
     </div>
   );
