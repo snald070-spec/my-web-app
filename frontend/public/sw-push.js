@@ -1,4 +1,4 @@
-// Push 알림 핸들러 — Service Worker 컨텍스트에서 실행
+// Push 알림 핸들러 — Service Worker 컨텍스트에서 실행 (v2)
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
