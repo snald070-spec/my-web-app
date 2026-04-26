@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import bcrypt
 import hashlib
 import secrets
+import threading
+import time
 import os
 import models
 
@@ -27,7 +29,7 @@ if APP_ENV in {"prod", "production"} and _raw_secret == "dev-only-insecure-secre
 
 SECRET_KEY = _raw_secret
 ALGORITHM  = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "120"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -37,14 +39,25 @@ def hash_password(password: str) -> str:
     """bcrypt hash (use for all new passwords)."""
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-def verify_password(plain: str, hashed: str) -> bool:
-    """bcrypt first, SHA-256 fallback for legacy accounts."""
+def _is_legacy_sha256(hashed: str) -> bool:
+    """SHA-256 hex string: exactly 64 lowercase hex chars."""
+    return len(hashed) == 64 and all(c in "0123456789abcdef" for c in hashed)
+
+def verify_password(plain: str, hashed: str) -> tuple[bool, bool]:
+    """
+    Verify password. Returns (is_valid, needs_upgrade).
+    needs_upgrade=True when SHA-256 legacy hash matched — caller must rehash with bcrypt.
+    """
+    import logging as _l
     try:
         if bcrypt.checkpw(plain.encode(), hashed.encode()):
-            return True
+            return True, False
     except Exception:
         pass
-    return hashlib.sha256(plain.encode()).hexdigest() == hashed
+    if _is_legacy_sha256(hashed) and hashlib.sha256(plain.encode()).hexdigest() == hashed:
+        _l.getLogger(__name__).warning("SHA-256 legacy hash matched — will upgrade to bcrypt")
+        return True, True
+    return False, False
 
 def generate_temp_password() -> str:
     """10-char temp password: uppercase + lowercase + digit, no confusable chars."""
@@ -73,6 +86,31 @@ def validate_password_policy(password: str) -> tuple[bool, str]:
     return True, ""
 
 
+# ── Token blacklist (logout) ───────────────────────────────────────────────────
+_token_blacklist: dict[str, float] = {}  # token -> exp_timestamp
+_blacklist_lock = threading.Lock()
+
+
+def blacklist_token(token: str) -> None:
+    """Add token to blacklist. Self-cleaning: removes expired entries on each call."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        exp = float(payload.get("exp", 0))
+    except Exception:
+        exp = time.time() + ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    now = time.time()
+    with _blacklist_lock:
+        _token_blacklist[token] = exp
+        expired = [t for t, e in _token_blacklist.items() if e < now]
+        for t in expired:
+            del _token_blacklist[t]
+
+
+def is_token_blacklisted(token: str) -> bool:
+    with _blacklist_lock:
+        return token in _token_blacklist
+
+
 # ── JWT ────────────────────────────────────────────────────────────────────────
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -91,6 +129,8 @@ def get_current_user(
         detail="Invalid or expired credentials.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if is_token_blacklisted(token):
+        raise exc
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         emp_id: str = payload.get("sub")

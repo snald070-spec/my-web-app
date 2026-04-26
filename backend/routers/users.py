@@ -321,7 +321,8 @@ def list_users(
 
     kw = (keyword or "").strip()
     if kw:
-        like = f"%{kw}%"
+        kw_safe = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{kw_safe}%"
         q = q.filter(
             or_(
                 models.User.emp_id.ilike(like),

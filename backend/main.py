@@ -20,7 +20,7 @@ from database import engine, get_db, Base
 from auth import (
     verify_password, create_access_token, hash_password,
     get_current_user, require_admin, require_master, validate_password_policy,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ACCESS_TOKEN_EXPIRE_MINUTES, blacklist_token, oauth2_scheme,
 )
 from routers import dashboard, users, notices, fees, attendance, league, notifications
 from logging_config import setup_logging
@@ -108,7 +108,12 @@ async def lifespan(app: FastAPI):
         _admin_row = db.query(models.User).filter(models.User.emp_id == "admin").first()
         _master_row = db.query(models.User).filter(models.User.emp_id == "master").first()
         if _admin_row and not _master_row:
-            _init_pw = os.environ.get("MASTER_INIT_PASSWORD", "1234")
+            _init_pw = os.environ.get("MASTER_INIT_PASSWORD", "")
+            if not _init_pw:
+                import secrets as _sec, string as _str
+                _chars = _str.ascii_letters + _str.digits + "!@#$%^&*"
+                _init_pw = "".join(_sec.choice(_chars) for _ in range(16))
+                logger.warning("⚠️  MASTER_INIT_PASSWORD not set. Generated: %s — save this!", _init_pw)
             _admin_row.emp_id = "master"
             _admin_row.name = "master"
             _admin_row.hashed_password = hash_password(_init_pw)
@@ -118,7 +123,12 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Migrated admin -> master account")
 
         if db.query(models.User).count() == 0:
-            init_pw = os.environ.get("MASTER_INIT_PASSWORD", "1234")
+            init_pw = os.environ.get("MASTER_INIT_PASSWORD", "")
+            if not init_pw:
+                import secrets as _sec2, string as _str2
+                _chars2 = _str2.ascii_letters + _str2.digits + "!@#$%^&*"
+                init_pw = "".join(_sec2.choice(_chars2) for _ in range(16))
+                logger.warning("⚠️  MASTER_INIT_PASSWORD not set. Generated: %s — save this!", init_pw)
             admin = models.User(
                 emp_id          = "master",
                 name            = "master",
@@ -181,8 +191,8 @@ def _parse_cors_origins() -> list[str]:
     return origins_list
 
 
-LOGIN_MAX_ATTEMPTS = int(os.environ.get("LOGIN_MAX_ATTEMPTS", "7"))
-LOGIN_BLOCK_MINUTES = int(os.environ.get("LOGIN_BLOCK_MINUTES", "10"))
+LOGIN_MAX_ATTEMPTS = int(os.environ.get("LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_BLOCK_MINUTES = int(os.environ.get("LOGIN_BLOCK_MINUTES", "30"))
 _login_attempts_lock = threading.Lock()
 _login_attempts: dict[str, dict[str, float | int]] = {}
 
@@ -253,7 +263,7 @@ async def add_security_headers(request: Request, call_next):
     connect_src = f"'self' https://accounts.google.com https://oauth2.googleapis.com https://fcm.googleapis.com {_CSP_CONNECT_SRC}".strip()
     response.headers["Content-Security-Policy"] = (
         f"default-src 'self'; "
-        f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; "
+        f"script-src 'self' 'unsafe-inline' https://accounts.google.com; "
         f"style-src 'self' 'unsafe-inline' https://accounts.google.com; "
         f"img-src 'self' data: blob: https:; "
         f"connect-src {connect_src}; "
@@ -340,12 +350,20 @@ def login(
 
     # Login identifier is emp_id.
     user = db.query(models.User).filter(models.User.emp_id == form.username).first()
-    
-    if not user or not verify_password(form.password, user.hashed_password):
+
+    ok, needs_upgrade = verify_password(form.password, user.hashed_password) if user else (False, False)
+    if not user or not ok:
         _record_login_failure(bucket_key)
         raise HTTPException(status_code=401, detail="Invalid credentials.")
     if getattr(user, "is_resigned", False):
         raise HTTPException(status_code=403, detail="This account has been deactivated.")
+
+    if needs_upgrade:
+        user.hashed_password = hash_password(form.password)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
 
     _clear_login_failures(bucket_key)
 
@@ -431,7 +449,8 @@ def change_password(
     """Change current user's password. Requires old password for verification."""
     if models.canonical_role(current_user.role) == models.RoleEnum.MASTER:
         raise HTTPException(status_code=403, detail="Master account password is locked. Contact the system administrator.")
-    if not verify_password(body.current_password, current_user.hashed_password):
+    ok, _ = verify_password(body.current_password, current_user.hashed_password)
+    if not ok:
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
     is_valid, reason = validate_password_policy(body.new_password)
     if not is_valid:
@@ -501,6 +520,8 @@ def complete_profile(
     if phone:
         current_user.phone = phone
     if body.avatar_url:
+        if not body.avatar_url.startswith("/avatars/"):
+            raise HTTPException(status_code=400, detail="avatar_url must start with /avatars/")
         current_user.avatar_url = body.avatar_url
     current_user.is_profile_complete = True
 
@@ -584,6 +605,11 @@ def google_login(
         if id_info.get("azp") != google_client_id and id_info.get("aud") != google_client_id:
             logger.warning("Google tokeninfo azp/aud mismatch: %s", id_info)
             raise HTTPException(status_code=401, detail="Google 토큰 검증에 실패했습니다.")
+        # 만료 시간 검증
+        exp = id_info.get("exp")
+        if exp and int(exp) < int(time.time()):
+            logger.warning("Google access_token expired: exp=%s", exp)
+            raise HTTPException(status_code=401, detail="Google 토큰이 만료되었습니다. 다시 로그인해주세요.")
 
     google_sub = id_info.get("sub", "")
     google_email = (id_info.get("email") or "").strip().lower()
@@ -913,6 +939,16 @@ def reject_user(
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error.")
     return {"emp_id": emp_id, "rejected": True}
+
+
+@app.post("/api/auth/logout")
+def logout(
+    token: str = Depends(oauth2_scheme),
+    current_user: models.User = Depends(get_current_user),
+):
+    """현재 토큰을 블랙리스트에 추가하여 즉시 무효화."""
+    blacklist_token(token)
+    return {"message": "로그아웃되었습니다."}
 
 
 @app.post("/api/auth/skip-password-change")

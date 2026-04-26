@@ -123,8 +123,13 @@ export function AuthProvider({ children }) {
     });
   }
 
-  function logout() {
+  async function logout() {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    try {
+      await api.post("/api/auth/logout");
+    } catch {
+      // 서버 무효화 실패 시에도 클라이언트 로그아웃은 진행
+    }
     localStorage.clear();
     sessionStorage.clear();
     setUser(null);
