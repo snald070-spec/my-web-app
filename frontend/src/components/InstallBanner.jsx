@@ -31,24 +31,25 @@ export default function InstallBanner() {
 
     if (!isAndroid()) return // 데스크탑 제외
 
-    if (isSamsungBrowser()) {
-      // 삼성 인터넷: 메뉴 바로가기 방식 안내 (WebAPK 아님 → Play Protect 없음)
-      setMode('samsung-manual'); setVisible(true); return
-    }
-
-    // Chrome / 기타 Android 브라우저
-    // beforeinstallprompt 캡처는 하되, prompt() 는 Samsung Internet 유도 후 마지막 수단으로만 사용
+    // Samsung Internet + Chrome 모두 beforeinstallprompt 사용
+    // Samsung Internet: prompt() → "웹앱으로 설치" 다이얼로그 (Play Protect 없음)
+    // Chrome: prompt() → WebAPK (Play Protect 가능)
     let timer
     function onBeforeInstall(e) {
       e.preventDefault()
       clearTimeout(timer)
       setDeferredPrompt(e)
-      setMode('chrome-guide')
+      setMode(isSamsungBrowser() ? 'samsung-prompt' : 'chrome-guide')
       setVisible(true)
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
+
+    // 3초 내 이벤트 없으면 수동 안내
     timer = setTimeout(() => {
-      if (!deferredPrompt) { setMode('android-manual'); setVisible(true) }
+      if (!deferredPrompt) {
+        setMode(isSamsungBrowser() ? 'samsung-manual' : 'android-manual')
+        setVisible(true)
+      }
     }, 3000)
 
     return () => {
@@ -74,7 +75,39 @@ export default function InstallBanner() {
 
   if (!visible) return null
 
-  // ── 삼성 인터넷: 홈 화면에 추가 ──────────────────────────────────────────
+  // ── 삼성 인터넷: 버튼 한 번으로 설치 (beforeinstallprompt 있을 때) ────────
+  if (mode === 'samsung-prompt') {
+    return (
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
+        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
+          <img src="/icon-192.png" alt="" className="w-8 h-8 object-contain shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold leading-tight">앱으로 설치하기</p>
+            <p className="text-xs text-gray-400 mt-0.5">홈 화면에 추가하고 앱처럼 사용하세요.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={dismiss} className="text-xs text-gray-400 hover:text-white px-2 py-1.5 rounded-lg transition-colors">
+              나중에
+            </button>
+            <button
+              onClick={async () => {
+                if (!deferredPrompt) return
+                deferredPrompt.prompt()
+                const { outcome } = await deferredPrompt.userChoice
+                setDeferredPrompt(null)
+                if (outcome === 'accepted') setVisible(false)
+              }}
+              className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              설치
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── 삼성 인터넷: 수동 안내 (beforeinstallprompt 없을 때) ─────────────────
   if (mode === 'samsung-manual') {
     return (
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
