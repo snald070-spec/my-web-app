@@ -743,8 +743,14 @@ export default function UserManagementPage() {
           {pendingUsers.map((u) => (
             <div key={u.emp_id} className="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
               <div className="text-left flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
-                <p className="text-xs text-gray-500 truncate">{u.email || "-"}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
+                  {u.google_id
+                    ? <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium shrink-0">Google</span>
+                    : <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium shrink-0">일반가입</span>
+                  }
+                </div>
+                <p className="text-xs text-gray-500 truncate">{u.phone ? u.phone : (u.email || "-")}</p>
                 {!u.is_profile_complete && (
                   <p className="text-xs text-amber-600 mt-0.5">프로필 미완성</p>
                 )}

@@ -22,6 +22,7 @@ import MembersPage from "./pages/MembersPage";
 import MyProfilePage from "./pages/MyProfilePage";
 import GoogleProfileSetupPage from "./pages/GoogleProfileSetupPage";
 import PendingApprovalPage from "./pages/PendingApprovalPage";
+import SignupPage from "./pages/SignupPage";
 
 // ── Error boundary (prevents full white-screen crashes) ───────────────────────
 class RouteErrorBoundary extends Component {
@@ -155,6 +156,10 @@ function AppRoutes() {
 
   // Not logged in or first-login forced password change
   if (!user || user.is_first_login) {
+    // 회원가입 페이지는 비로그인 상태에서도 접근 가능
+    if (window.location.pathname === "/signup") {
+      return <SignupPage />;
+    }
     const current = window.location.pathname + window.location.search;
     if (current !== "/" && !sessionStorage.getItem("loginRedirect")) {
       sessionStorage.setItem("loginRedirect", current);

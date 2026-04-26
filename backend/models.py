@@ -83,7 +83,11 @@ class User(Base):
 
     # Profile completion (Google 신규가입 후 추가 입력)
     birthday           = Column(String(5),   nullable=True, comment="생일 MM-DD")
+    phone              = Column(String(20),  nullable=True, comment="핸드폰 번호 (010-XXXX-XXXX)")
     is_profile_complete = Column(Boolean, default=True, nullable=True, comment="False = Google 신규가입 후 프로필 미완성")
+
+    # 가입 승인 (Google 신규가입은 마스터 승인 필요)
+    is_approved = Column(Boolean, default=True, nullable=False, comment="False = 마스터 승인 대기 중")
 
     # Social login
     google_id = Column(String(200), nullable=True, unique=True, comment="Google OAuth sub (unique ID)")

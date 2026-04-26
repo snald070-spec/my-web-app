@@ -35,6 +35,7 @@ export default function GoogleProfileSetupPage() {
   const draft = loadDraft();
 
   const [name, setName]           = useState(draft.name ?? (user?.name || ""));
+  const [phone, setPhone]         = useState(draft.phone ?? "");
   const [birthYear, setBirthYear] = useState(draft.birthYear ?? "");
   const [positions, setPositions] = useState(draft.positions ?? []);
   const [month, setMonth]         = useState(draft.month ?? "");
@@ -53,7 +54,7 @@ export default function GoogleProfileSetupPage() {
 
   // 입력 내용을 localStorage에 자동 저장 (토큰 만료 후 재로그인해도 유지)
   useEffect(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, birthYear, positions, month, day }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, phone, birthYear, positions, month, day }));
   }, [name, birthYear, positions, month, day]);
 
   function handleAvatarChange(e) {
@@ -93,11 +94,13 @@ export default function GoogleProfileSetupPage() {
       }
 
       const birthday = month && day ? `${month}-${day}` : null;
+      const phoneDigits = phone ? phone.replace(/[^0-9]/g, "") : undefined;
       const { data } = await api.post("/api/auth/complete-profile", {
         name: name.trim(),
         birth_year: year,
         position: positions.join(","),
         birthday,
+        phone: phoneDigits || undefined,
         avatar_url: avatarUrl,
       });
 
@@ -182,6 +185,25 @@ export default function GoogleProfileSetupPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               maxLength={20}
+            />
+          </div>
+
+          {/* 핸드폰 번호 (선택) */}
+          <div>
+            <label className="field-label">핸드폰 번호 <span className="text-xs text-gray-400">(선택사항)</span></label>
+            <input
+              className="field-input"
+              type="tel"
+              placeholder="010-0000-0000"
+              value={phone}
+              onChange={e => {
+                const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                let formatted = digits;
+                if (digits.length > 7) formatted = `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`;
+                else if (digits.length > 3) formatted = `${digits.slice(0,3)}-${digits.slice(3)}`;
+                setPhone(formatted);
+              }}
+              maxLength={13}
             />
           </div>
 

@@ -274,6 +274,17 @@ export default function LoginPage() {
           비밀번호 분실 시 관리자에게 임시 비밀번호 발급을 요청하세요.
         </p>
 
+        <div className="mt-4 flex items-center justify-center gap-1 text-sm">
+          <span className="text-gray-400">처음 오셨나요?</span>
+          <a
+            href="/signup"
+            className="text-blue-600 font-semibold hover:underline"
+            onClick={e => { e.preventDefault(); window.location.href = "/signup"; }}
+          >
+            회원가입
+          </a>
+        </div>
+
         {GOOGLE_ENABLED && (
           <>
             <div className="flex items-center gap-3 my-5">

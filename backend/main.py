@@ -70,6 +70,8 @@ def _ensure_user_profile_columns():
             ))
         if "is_approved" not in columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 1 NOT NULL"))
+        if "phone" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"))
 
 
 _ensure_league_team_assignment_columns()
@@ -388,6 +390,7 @@ def me(
         "position":             current_user.position,
         "avatar_url":           current_user.avatar_url,
         "birthday":             getattr(current_user, "birthday", None),
+        "phone":                getattr(current_user, "phone", None),
         "is_profile_complete":  bool(getattr(current_user, "is_profile_complete", True)),
         "is_approved":          bool(getattr(current_user, "is_approved", True)),
     }
@@ -451,6 +454,7 @@ class CompleteProfileRequest(BaseModel):
     birth_year: int
     position: str
     birthday: str | None = None   # MM-DD (선택)
+    phone: str | None = None      # 010-XXXX-XXXX (선택)
     avatar_url: str | None = None  # 선택
 
 
@@ -475,12 +479,19 @@ def complete_profile(
         raise HTTPException(status_code=400, detail="올바른 포지션을 선택해주세요.")
     if body.birthday and not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", body.birthday):
         raise HTTPException(status_code=400, detail="생일 형식이 올바르지 않습니다. (MM-DD)")
+    phone = None
+    if body.phone:
+        phone = _re.sub(r"[^0-9]", "", body.phone.strip())
+        if not _re.match(r"^01[016789]\d{7,8}$", phone):
+            raise HTTPException(status_code=400, detail="핸드폰 번호 형식이 올바르지 않습니다. (010-XXXX-XXXX)")
 
     current_user.name = name
     current_user.birth_year = body.birth_year
     current_user.position = body.position
     if body.birthday:
         current_user.birthday = body.birthday
+    if phone:
+        current_user.phone = phone
     if body.avatar_url:
         current_user.avatar_url = body.avatar_url
     current_user.is_profile_complete = True
@@ -509,6 +520,7 @@ def complete_profile(
         "position":            current_user.position,
         "avatar_url":          current_user.avatar_url,
         "birthday":            current_user.birthday,
+        "phone":               getattr(current_user, "phone", None),
         "is_profile_complete": True,
         "is_approved":         bool(getattr(current_user, "is_approved", True)),
     }
@@ -657,6 +669,7 @@ def google_login(
         "position":             user.position,
         "avatar_url":           user.avatar_url,
         "birthday":             getattr(user, "birthday", None),
+        "phone":                getattr(user, "phone", None),
         "is_profile_complete":  bool(getattr(user, "is_profile_complete", True)),
         "is_approved":          bool(getattr(user, "is_approved", True)),
     }
@@ -683,8 +696,128 @@ def refresh_token(current_user: models.User = Depends(get_current_user)):
         "position":             current_user.position,
         "avatar_url":           current_user.avatar_url,
         "birthday":             getattr(current_user, "birthday", None),
+        "phone":                getattr(current_user, "phone", None),
         "is_profile_complete":  bool(getattr(current_user, "is_profile_complete", True)),
         "is_approved":          bool(getattr(current_user, "is_approved", True)),
+    }
+
+
+class RegisterRequest(BaseModel):
+    name: str
+    phone: str
+    birth_year: int
+    position: str
+    password: str
+    birthday: str | None = None  # MM-DD (선택)
+    email: str | None = None
+
+
+@app.post("/api/auth/register", status_code=201)
+def register(
+    body: RegisterRequest,
+    db: Session = Depends(get_db),
+):
+    """자체 회원가입 (비Google). 마스터 승인 후 이용 가능."""
+    import re as _re
+
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="이름을 입력해주세요.")
+    if len(name) < 2:
+        raise HTTPException(status_code=400, detail="이름은 2자 이상이어야 합니다.")
+
+    phone_raw = _re.sub(r"[^0-9]", "", (body.phone or "").strip())
+    if not _re.match(r"^01[016789]\d{7,8}$", phone_raw):
+        raise HTTPException(status_code=400, detail="핸드폰 번호 형식이 올바르지 않습니다. (010-XXXX-XXXX)")
+
+    if not (1930 <= body.birth_year <= 2015):
+        raise HTTPException(status_code=400, detail="올바른 출생연도를 입력해주세요.")
+
+    _ALLOWED_POS = {"PG", "SG", "SF", "PF", "C", "F", "G"}
+    pos_list = [p.strip() for p in body.position.split(",") if p.strip()]
+    if not pos_list or not all(p in _ALLOWED_POS for p in pos_list):
+        raise HTTPException(status_code=400, detail="올바른 포지션을 선택해주세요.")
+
+    is_valid, reason = validate_password_policy(body.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=reason)
+
+    if body.birthday and not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", body.birthday):
+        raise HTTPException(status_code=400, detail="생일 형식이 올바르지 않습니다. (MM-DD)")
+
+    # emp_id 중복 체크 (이름 기반)
+    base = _re.sub(r"\s+", "", name.lower()) or "user"
+    emp_id = base
+    suffix_ord = ord('B')
+    while db.query(models.User).filter(models.User.emp_id == emp_id).first():
+        emp_id = base + chr(suffix_ord).lower()
+        suffix_ord += 1
+        if suffix_ord > ord('Z'):
+            import secrets as _s
+            emp_id = base + _s.token_hex(3)
+            break
+
+    # 같은 핸드폰 번호 중복 체크
+    existing_phone = db.query(models.User).filter(models.User.phone == phone_raw).first()
+    if existing_phone:
+        raise HTTPException(status_code=409, detail="이미 가입된 핸드폰 번호입니다.")
+
+    user = models.User(
+        emp_id=emp_id,
+        name=name,
+        email=(body.email.strip().lower() if body.email else None),
+        department="",
+        hashed_password=hash_password(body.password),
+        role=models.RoleEnum.GENERAL,
+        is_first_login=False,
+        is_approved=False,
+        is_profile_complete=True,
+        birth_year=body.birth_year,
+        position=body.position,
+        phone=phone_raw,
+        birthday=body.birthday or None,
+    )
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logger.info("자체 신규 가입 (승인 대기): emp_id=%s name=%s", user.emp_id, name)
+        try:
+            from services.push_service import send_push_to_all
+            send_push_to_all(
+                db,
+                title="🏀 새 회원 가입 신청",
+                body=f"{user.name}님이 가입을 요청했습니다. 승인이 필요합니다.",
+                url="/admin/users",
+                target_roles=["MASTER"],
+            )
+        except Exception:
+            pass
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="계정 생성 중 오류가 발생했습니다.")
+
+    token = create_access_token({"sub": user.emp_id})
+    role = models.canonical_role(user.role)
+    return {
+        "access_token":        token,
+        "token_type":          "bearer",
+        "expires_in":          ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "emp_id":              user.emp_id,
+        "name":                user.name,
+        "department":          user.department,
+        "division":            None,
+        "email":               user.email,
+        "role":                role.value,
+        "is_first_login":      False,
+        "is_vip":              False,
+        "birth_year":          user.birth_year,
+        "position":            user.position,
+        "avatar_url":          None,
+        "birthday":            user.birthday,
+        "phone":               user.phone,
+        "is_profile_complete": True,
+        "is_approved":         False,
     }
 
 
@@ -707,11 +840,13 @@ def list_pending_approval(
                 "emp_id": u.emp_id,
                 "name": u.name,
                 "email": u.email,
+                "phone": getattr(u, "phone", None),
                 "position": u.position,
                 "birth_year": u.birth_year,
                 "avatar_url": u.avatar_url,
                 "created_at": u.created_at,
                 "is_profile_complete": bool(getattr(u, "is_profile_complete", True)),
+                "google_id": u.google_id,
             }
             for u in users
         ],
