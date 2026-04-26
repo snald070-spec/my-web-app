@@ -39,12 +39,20 @@ function AdminView({ onPreview }) {
   const [stats, setStats] = useState(null);
   const [alertMsg, setAlertMsg] = useState("");
   const [statsEmpId, setStatsEmpId] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     api.get("/api/dashboard/admin-stats")
       .then(r => setStats(r.data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== "MASTER") return;
+    api.get("/api/admin/pending-approval")
+      .then(r => setPendingCount(r.data?.count ?? 0))
+      .catch(() => {});
+  }, [user?.role]);
 
   async function handleAcknowledgeNonFeeAlerts() {
     try {
@@ -91,6 +99,18 @@ function AdminView({ onPreview }) {
               <button className="btn-secondary btn btn-sm" onClick={handleAcknowledgeNonFeeAlerts}>오늘 알림 확인 처리</button>
             </div>
             {alertMsg && <p className="mt-2 text-xs text-red-700">{alertMsg}</p>}
+          </div>
+        )}
+
+        {user?.role === "MASTER" && pendingCount > 0 && (
+          <div className="text-left rounded-xl border border-amber-200 bg-amber-50 p-4 mb-4">
+            <p className="text-sm font-bold text-amber-700">가입 승인 대기 중인 회원이 있습니다.</p>
+            <p className="text-xs text-amber-600 mt-1">
+              승인 대기: {pendingCount}명
+            </p>
+            <div className="mt-3">
+              <Link to="/admin/users" className="btn-primary btn btn-sm">회원 관리에서 승인하기</Link>
+            </div>
           </div>
         )}
 

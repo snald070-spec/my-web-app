@@ -19,7 +19,7 @@ import models
 from database import engine, get_db, Base
 from auth import (
     verify_password, create_access_token, hash_password,
-    get_current_user, require_admin, validate_password_policy,
+    get_current_user, require_admin, require_master, validate_password_policy,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from routers import dashboard, users, notices, fees, attendance, league, notifications
@@ -68,6 +68,8 @@ def _ensure_user_profile_columns():
                 "UPDATE users SET is_profile_complete = 0 "
                 "WHERE google_id IS NOT NULL AND birth_year IS NULL"
             ))
+        if "is_approved" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 1 NOT NULL"))
 
 
 _ensure_league_team_assignment_columns()
@@ -387,6 +389,7 @@ def me(
         "avatar_url":           current_user.avatar_url,
         "birthday":             getattr(current_user, "birthday", None),
         "is_profile_complete":  bool(getattr(current_user, "is_profile_complete", True)),
+        "is_approved":          bool(getattr(current_user, "is_approved", True)),
     }
 
 
@@ -507,6 +510,7 @@ def complete_profile(
         "avatar_url":          current_user.avatar_url,
         "birthday":            current_user.birthday,
         "is_profile_complete": True,
+        "is_approved":         bool(getattr(current_user, "is_approved", True)),
     }
 
 
@@ -609,12 +613,25 @@ def google_login(
             is_first_login=False,
             google_id=google_sub,
             is_profile_complete=False,
+            is_approved=False,
         )
         try:
             db.add(user)
             db.commit()
             db.refresh(user)
-            logger.info("Google 신규 가입: emp_id=%s email=%s", user.emp_id, google_email)
+            logger.info("Google 신규 가입 (승인 대기): emp_id=%s email=%s", user.emp_id, google_email)
+            # MASTER 계정에 푸시 알림
+            try:
+                from services.push_service import send_push_to_all
+                send_push_to_all(
+                    db,
+                    title="🏀 새 회원 가입 신청",
+                    body=f"{user.name}님이 Google로 가입을 요청했습니다. 승인이 필요합니다.",
+                    url="/admin/users",
+                    target_roles=["MASTER"],
+                )
+            except Exception:
+                pass
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(status_code=500, detail="계정 생성 중 오류가 발생했습니다.")
@@ -641,6 +658,7 @@ def google_login(
         "avatar_url":           user.avatar_url,
         "birthday":             getattr(user, "birthday", None),
         "is_profile_complete":  bool(getattr(user, "is_profile_complete", True)),
+        "is_approved":          bool(getattr(user, "is_approved", True)),
     }
 
 
@@ -666,7 +684,92 @@ def refresh_token(current_user: models.User = Depends(get_current_user)):
         "avatar_url":           current_user.avatar_url,
         "birthday":             getattr(current_user, "birthday", None),
         "is_profile_complete":  bool(getattr(current_user, "is_profile_complete", True)),
+        "is_approved":          bool(getattr(current_user, "is_approved", True)),
     }
+
+
+@app.get("/api/admin/pending-approval")
+def list_pending_approval(
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    """Google 가입 후 승인 대기 중인 회원 목록 (MASTER only)."""
+    users = (
+        db.query(models.User)
+        .filter(models.User.is_approved.is_(False), models.User.is_resigned.isnot(True))
+        .order_by(models.User.created_at.asc())
+        .all()
+    )
+    return {
+        "count": len(users),
+        "items": [
+            {
+                "emp_id": u.emp_id,
+                "name": u.name,
+                "email": u.email,
+                "position": u.position,
+                "birth_year": u.birth_year,
+                "avatar_url": u.avatar_url,
+                "created_at": u.created_at,
+                "is_profile_complete": bool(getattr(u, "is_profile_complete", True)),
+            }
+            for u in users
+        ],
+    }
+
+
+@app.post("/api/admin/users/{emp_id}/approve")
+def approve_user(
+    emp_id: str,
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    """Google 신규 가입 승인 (MASTER only)."""
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
+    if bool(getattr(user, "is_approved", True)):
+        raise HTTPException(status_code=400, detail="이미 승인된 회원입니다.")
+    user.is_approved = True
+    try:
+        db.commit()
+        logger.info("회원 승인: actor=%s target=%s", master_user.emp_id, emp_id)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error.")
+    try:
+        from services.push_service import send_push_to_all
+        send_push_to_all(
+            db,
+            title="✅ 가입이 승인되었습니다",
+            body="Draw Basketball Team에 오신 것을 환영합니다!",
+            url="/",
+            target_emp_ids=[emp_id],
+        )
+    except Exception:
+        pass
+    return {"emp_id": emp_id, "is_approved": True}
+
+
+@app.post("/api/admin/users/{emp_id}/reject")
+def reject_user(
+    emp_id: str,
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    """Google 신규 가입 거절 — 계정 삭제 (MASTER only)."""
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
+    try:
+        db.query(models.PushSubscription).filter(models.PushSubscription.emp_id == emp_id).delete(synchronize_session=False)
+        db.delete(user)
+        db.commit()
+        logger.info("회원 가입 거절(삭제): actor=%s target=%s", master_user.emp_id, emp_id)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error.")
+    return {"emp_id": emp_id, "rejected": True}
 
 
 @app.post("/api/auth/skip-password-change")

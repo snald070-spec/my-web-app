@@ -97,12 +97,24 @@ def send_push_to_all(
     body: str,
     url: str = "/",
     exclude_emp_id: str | None = None,
+    target_roles: list[str] | None = None,
+    target_emp_ids: list[str] | None = None,
 ) -> dict:
     import models
 
     q = db.query(models.PushSubscription)
     if exclude_emp_id:
         q = q.filter(models.PushSubscription.emp_id != exclude_emp_id)
+    if target_emp_ids is not None:
+        q = q.filter(models.PushSubscription.emp_id.in_(target_emp_ids))
+    elif target_roles is not None:
+        master_emp_ids = [
+            u.emp_id for u in
+            db.query(models.User).filter(models.User.role.in_(target_roles)).all()
+        ]
+        if not master_emp_ids:
+            return {"sent": 0, "failed": 0}
+        q = q.filter(models.PushSubscription.emp_id.in_(master_emp_ids))
     subs = q.all()
 
     sent = 0

@@ -103,6 +103,9 @@ export default function UserManagementPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview, setAvatarPreview]     = useState(null);
   const avatarInputRef = useRef(null);
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState("");
 
   const skip = (page - 1) * pageSize;
   const filterSelectStyle = {};
@@ -212,9 +215,57 @@ export default function UserManagementPage() {
     }
   }
 
+  async function loadPendingUsers() {
+    if (!canManageRoles) return;
+    setPendingLoading(true);
+    try {
+      const r = await api.get("/api/admin/pending-approval");
+      setPendingUsers(r.data?.items ?? []);
+    } catch {
+      // silently ignore
+    } finally {
+      setPendingLoading(false);
+    }
+  }
+
+  async function handleApprove(empId) {
+    setApprovingId(empId);
+    setErr("");
+    try {
+      await api.post(`/api/admin/users/${empId}/approve`);
+      await loadPendingUsers();
+      await loadUsers();
+      setSuccessMsg(`${empId}님의 가입이 승인되었습니다.`);
+    } catch (e) {
+      setErr(toErrorMessage(e.response?.data?.detail, "승인에 실패했습니다."));
+    } finally {
+      setApprovingId("");
+    }
+  }
+
+  async function handleReject(empId) {
+    if (!window.confirm(`${empId}님의 가입을 거절하고 계정을 삭제하시겠습니까?`)) return;
+    setApprovingId(empId);
+    setErr("");
+    try {
+      await api.post(`/api/admin/users/${empId}/reject`);
+      await loadPendingUsers();
+      await loadUsers();
+      setSuccessMsg(`${empId}님의 가입이 거절되었습니다.`);
+    } catch (e) {
+      setErr(toErrorMessage(e.response?.data?.detail, "거절에 실패했습니다."));
+    } finally {
+      setApprovingId("");
+    }
+  }
+
   useEffect(() => {
     loadUsers();
   }, [skip, pageSize, keyword, role, status, firstLogin, sortBy, sortDir]);
+
+  useEffect(() => {
+    loadPendingUsers();
+  }, [canManageRoles]);
 
   useEffect(() => {
     const next = new URLSearchParams();
@@ -679,6 +730,45 @@ export default function UserManagementPage() {
       </div>
 
       {err && <div className="alert-danger">{err}</div>}
+
+      {canManageRoles && (pendingLoading || pendingUsers.length > 0) && (
+        <div className="card p-4 space-y-3 border-l-4 border-amber-400">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-amber-700">가입 승인 대기</h2>
+            {pendingLoading && <span className="spinner" />}
+          </div>
+          {!pendingLoading && pendingUsers.length === 0 && (
+            <p className="text-xs text-gray-400">대기 중인 회원이 없습니다.</p>
+          )}
+          {pendingUsers.map((u) => (
+            <div key={u.emp_id} className="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+              <div className="text-left flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
+                <p className="text-xs text-gray-500 truncate">{u.email || "-"}</p>
+                {!u.is_profile_complete && (
+                  <p className="text-xs text-amber-600 mt-0.5">프로필 미완성</p>
+                )}
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  className="btn-primary btn btn-sm"
+                  disabled={approvingId === u.emp_id}
+                  onClick={() => handleApprove(u.emp_id)}
+                >
+                  {approvingId === u.emp_id ? "처리중..." : "승인"}
+                </button>
+                <button
+                  className="btn-danger btn btn-sm"
+                  disabled={approvingId === u.emp_id}
+                  onClick={() => handleReject(u.emp_id)}
+                >
+                  거절
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {activeFilterBadges.length > 0 && (
         <div className="card p-3">

@@ -21,6 +21,7 @@ import LeagueDraftPage from "./pages/LeagueDraftPage";
 import MembersPage from "./pages/MembersPage";
 import MyProfilePage from "./pages/MyProfilePage";
 import GoogleProfileSetupPage from "./pages/GoogleProfileSetupPage";
+import PendingApprovalPage from "./pages/PendingApprovalPage";
 
 // ── Error boundary (prevents full white-screen crashes) ───────────────────────
 class RouteErrorBoundary extends Component {
@@ -164,6 +165,11 @@ function AppRoutes() {
   // Google 신규 가입자 프로필 미완성
   if (user.is_profile_complete === false) {
     return <GoogleProfileSetupPage />;
+  }
+
+  // Google 신규 가입자 승인 대기
+  if (user.is_approved === false) {
+    return <PendingApprovalPage />;
   }
 
   return (
