@@ -86,6 +86,8 @@ export default function SignupPage() {
     if (!name.trim()) { setErr("이름을 입력해주세요."); return; }
     if (name.trim().length < 2) { setErr("이름은 2자 이상이어야 합니다."); return; }
     if (!phone) { setErr("핸드폰 번호를 입력해주세요."); return; }
+    const phoneDigits = phone.replace(/[^0-9]/g, "");
+    if (!/^01[016789]\d{7,8}$/.test(phoneDigits)) { setErr("올바른 핸드폰 번호를 입력해주세요. (010-XXXX-XXXX)"); return; }
     const year = parseInt(birthYear, 10);
     if (!birthYear || isNaN(year) || year < 1930 || year > CURRENT_YEAR - 5) {
       setErr("올바른 출생연도를 입력해주세요."); return;

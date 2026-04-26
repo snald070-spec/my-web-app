@@ -367,7 +367,9 @@ def login(
         "position":             user.position,
         "avatar_url":           user.avatar_url,
         "birthday":             getattr(user, "birthday", None),
+        "phone":                getattr(user, "phone", None),
         "is_profile_complete":  bool(getattr(user, "is_profile_complete", True)),
+        "is_approved":          bool(getattr(user, "is_approved", True)),
     }
 
 
@@ -484,6 +486,12 @@ def complete_profile(
         phone = _re.sub(r"[^0-9]", "", body.phone.strip())
         if not _re.match(r"^01[016789]\d{7,8}$", phone):
             raise HTTPException(status_code=400, detail="핸드폰 번호 형식이 올바르지 않습니다. (010-XXXX-XXXX)")
+        existing = db.query(models.User).filter(
+            models.User.phone == phone,
+            models.User.emp_id != current_user.emp_id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="이미 등록된 핸드폰 번호입니다.")
 
     current_user.name = name
     current_user.birth_year = body.birth_year

@@ -105,7 +105,7 @@ def send_push_to_all(
     q = db.query(models.PushSubscription)
     if exclude_emp_id:
         q = q.filter(models.PushSubscription.emp_id != exclude_emp_id)
-    if target_emp_ids is not None:
+    if target_emp_ids:
         q = q.filter(models.PushSubscription.emp_id.in_(target_emp_ids))
     elif target_roles is not None:
         master_emp_ids = [

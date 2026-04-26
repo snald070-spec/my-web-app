@@ -55,7 +55,7 @@ export default function GoogleProfileSetupPage() {
   // 입력 내용을 localStorage에 자동 저장 (토큰 만료 후 재로그인해도 유지)
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, phone, birthYear, positions, month, day }));
-  }, [name, birthYear, positions, month, day]);
+  }, [name, phone, birthYear, positions, month, day]);
 
   function handleAvatarChange(e) {
     const file = e.target.files?.[0];
@@ -69,7 +69,8 @@ export default function GoogleProfileSetupPage() {
     e.preventDefault();
     setErr("");
 
-    if (!name.trim())    { setErr("이름을 입력해주세요."); return; }
+    if (!name.trim())             { setErr("이름을 입력해주세요."); return; }
+    if (name.trim().length < 2)   { setErr("이름은 2자 이상이어야 합니다."); return; }
     const year = parseInt(birthYear, 10);
     if (!birthYear || isNaN(year) || year < 1930 || year > CURRENT_YEAR - 5) {
       setErr("올바른 출생연도를 입력해주세요."); return;
