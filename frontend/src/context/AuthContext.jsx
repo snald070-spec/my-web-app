@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef } from "react";
 import api from "../api";
+import { requestAndSubscribe, isSubscribed } from "../services/notificationService";
 
 const AuthCtx = createContext(null);
 
@@ -78,6 +79,13 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  function _subscribeAfterLogin() {
+    // 로그인 후 알림 권한이 아직 없으면 요청. 이미 구독된 경우는 스킵.
+    if (!isSubscribed()) {
+      setTimeout(() => requestAndSubscribe(), 1500);
+    }
+  }
+
   async function login(nameId, password) {
     const form = new URLSearchParams({ username: nameId, password });
     const { data } = await api.post("/api/auth/login", form);
@@ -89,11 +97,12 @@ export function AuthProvider({ children }) {
     }
     localStorage.setItem("user", JSON.stringify(data));
     setUser(data);
+    _subscribeAfterLogin();
     return data;
   }
 
-  async function loginWithGoogle(credential) {
-    const { data } = await api.post("/api/auth/google", { credential });
+  async function loginWithGoogle(accessToken) {
+    const { data } = await api.post("/api/auth/google", { access_token: accessToken });
     localStorage.setItem("token", data.access_token);
     if (data.expires_in) {
       const expiresAt = Date.now() + data.expires_in * 1000;
@@ -102,6 +111,7 @@ export function AuthProvider({ children }) {
     }
     localStorage.setItem("user", JSON.stringify(data));
     setUser(data);
+    _subscribeAfterLogin();
     return data;
   }
 

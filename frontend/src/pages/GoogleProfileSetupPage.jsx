@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
 
 const POSITIONS = [
-  { value: "PG", label: "PG (포인트가드)" },
-  { value: "SG", label: "SG (슈팅가드)" },
-  { value: "SF", label: "SF (스몰포워드)" },
-  { value: "PF", label: "PF (파워포워드)" },
-  { value: "C",  label: "C  (센터)" },
-  { value: "F",  label: "F  (포워드)" },
-  { value: "G",  label: "G  (가드)" },
+  { value: "PG", label: "PG - 포인트가드" },
+  { value: "SG", label: "SG - 슈팅가드" },
+  { value: "SF", label: "SF - 스몰포워드" },
+  { value: "PF", label: "PF - 파워포워드" },
+  { value: "C",  label: "C - 센터" },
+  { value: "F",  label: "F - 포워드" },
+  { value: "G",  label: "G - 가드" },
 ];
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({
@@ -22,20 +22,39 @@ const DAYS = Array.from({ length: 31 }, (_, i) => ({
 }));
 
 const CURRENT_YEAR = new Date().getFullYear();
+const DRAFT_KEY = "profileSetupDraft";
+
+function loadDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}"); }
+  catch { return {}; }
+}
 
 export default function GoogleProfileSetupPage() {
   const { user, updateUser } = useAuth();
 
-  const [name, setName]           = useState(user?.name || "");
-  const [birthYear, setBirthYear] = useState("");
-  const [position, setPosition]   = useState("");
-  const [month, setMonth]         = useState("");
-  const [day, setDay]             = useState("");
+  const draft = loadDraft();
+
+  const [name, setName]           = useState(draft.name ?? (user?.name || ""));
+  const [birthYear, setBirthYear] = useState(draft.birthYear ?? "");
+  const [positions, setPositions] = useState(draft.positions ?? []);
+  const [month, setMonth]         = useState(draft.month ?? "");
+  const [day, setDay]             = useState(draft.day ?? "");
+
+  function togglePosition(val) {
+    setPositions(prev =>
+      prev.includes(val) ? prev.filter(p => p !== val) : [...prev, val]
+    );
+  }
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || "");
 
   const [err, setErr]     = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 입력 내용을 localStorage에 자동 저장 (토큰 만료 후 재로그인해도 유지)
+  useEffect(() => {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, birthYear, positions, month, day }));
+  }, [name, birthYear, positions, month, day]);
 
   function handleAvatarChange(e) {
     const file = e.target.files?.[0];
@@ -54,7 +73,7 @@ export default function GoogleProfileSetupPage() {
     if (!birthYear || isNaN(year) || year < 1930 || year > CURRENT_YEAR - 5) {
       setErr("올바른 출생연도를 입력해주세요."); return;
     }
-    if (!position) { setErr("포지션을 선택해주세요."); return; }
+    if (positions.length === 0) { setErr("포지션을 선택해주세요."); return; }
     if ((month && !day) || (!month && day)) {
       setErr("생일은 월과 일을 모두 입력하거나 둘 다 비워두세요."); return;
     }
@@ -77,10 +96,13 @@ export default function GoogleProfileSetupPage() {
       const { data } = await api.post("/api/auth/complete-profile", {
         name: name.trim(),
         birth_year: year,
-        position,
+        position: positions.join(","),
         birthday,
         avatar_url: avatarUrl,
       });
+
+      // 가입 완료 시 draft 삭제
+      localStorage.removeItem(DRAFT_KEY);
 
       // 토큰 & 유저 상태 갱신
       localStorage.setItem("token", data.access_token);
@@ -93,6 +115,16 @@ export default function GoogleProfileSetupPage() {
       sessionStorage.removeItem("loginRedirect");
       window.location.replace(redirect || "/");
     } catch (e) {
+      const status = e.response?.status;
+      if (status === 401) {
+        // 토큰 만료 — draft는 유지하고 인증 정보만 지워서 재로그인 유도
+        localStorage.removeItem("token");
+        localStorage.removeItem("tokenExpiresAt");
+        localStorage.removeItem("user");
+        sessionStorage.clear();
+        window.location.href = "/";
+        return;
+      }
       setErr(e.response?.data?.detail || "저장 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
@@ -167,19 +199,28 @@ export default function GoogleProfileSetupPage() {
             />
           </div>
 
-          {/* 포지션 (필수) */}
+          {/* 포지션 (필수, 복수 선택) */}
           <div>
-            <label className="field-label">포지션 <span className="text-red-400">*</span></label>
-            <select
-              className="field-input"
-              value={position}
-              onChange={e => setPosition(e.target.value)}
-            >
-              <option value="">포지션 선택</option>
+            <label className="field-label">
+              포지션 <span className="text-red-400">*</span>
+              <span className="ml-1 text-xs font-normal text-gray-400">(복수 선택 가능)</span>
+            </label>
+            <div className="flex flex-wrap gap-2 mt-1">
               {POSITIONS.map(p => (
-                <option key={p.value} value={p.value}>{p.label}</option>
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => togglePosition(p.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
+                    positions.includes(p.value)
+                      ? "bg-blue-500 text-white border-blue-500"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                  }`}
+                >
+                  {p.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* 생일 (선택) */}

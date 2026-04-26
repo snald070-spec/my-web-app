@@ -18,7 +18,9 @@ let _isLoggingOut = false;
 function _doLogout() {
   if (_isLoggingOut) return;
   _isLoggingOut = true;
-  localStorage.clear();
+  localStorage.removeItem("token");
+  localStorage.removeItem("tokenExpiresAt");
+  localStorage.removeItem("user");
   sessionStorage.clear();
   window.location.href = "/";
 }
@@ -30,8 +32,11 @@ api.interceptors.response.use(
     const original = err.config;
     const status = err.response?.status;
 
-    // Skip refresh loop for auth endpoints themselves
-    const isAuthEndpoint = original?.url?.includes("/auth/");
+    // Skip refresh loop only for pure auth endpoints (login/google/refresh) to avoid infinite loops
+    const isAuthEndpoint =
+      original?.url?.includes("/auth/login") ||
+      original?.url?.includes("/auth/google") ||
+      original?.url?.includes("/auth/refresh");
     if (status === 401 && !original?._retried && !isAuthEndpoint) {
       original._retried = true;
       try {

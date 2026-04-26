@@ -4,22 +4,27 @@ import api from "../api";
 import Avatar from "../components/Avatar";
 
 const POSITIONS = [
-  { value: "", label: "선택 안 함" },
-  { value: "PG", label: "PG — 포인트가드" },
-  { value: "SG", label: "SG — 슈팅가드" },
-  { value: "SF", label: "SF — 스몰포워드" },
-  { value: "PF", label: "PF — 파워포워드" },
-  { value: "C",  label: "C — 센터" },
+  { value: "PG", label: "PG - 포인트가드" },
+  { value: "SG", label: "SG - 슈팅가드" },
+  { value: "SF", label: "SF - 스몰포워드" },
+  { value: "PF", label: "PF - 파워포워드" },
+  { value: "C",  label: "C - 센터" },
+  { value: "F",  label: "F - 포워드" },
+  { value: "G",  label: "G - 가드" },
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
+
+function parsePositions(str) {
+  return str ? str.split(",").map(s => s.trim()).filter(Boolean) : [];
+}
 
 export default function MyProfilePage() {
   const { user, updateUser } = useAuth();
 
   const [name,      setName]      = useState(user?.name      ?? "");
   const [birthYear, setBirthYear] = useState(user?.birth_year ? String(user.birth_year) : "");
-  const [position,  setPosition]  = useState(user?.position  ?? "");
+  const [positions, setPositions] = useState(parsePositions(user?.position));
 
   const [saving,   setSaving]   = useState(false);
   const [saveMsg,  setSaveMsg]  = useState("");
@@ -36,11 +41,17 @@ export default function MyProfilePage() {
       updateUser(data);
       setName(data.name ?? "");
       setBirthYear(data.birth_year ? String(data.birth_year) : "");
-      setPosition(data.position ?? "");
+      setPositions(parsePositions(data.position));
       setAvatarPreview(data.avatar_url ?? null);
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function togglePosition(val) {
+    setPositions(prev =>
+      prev.includes(val) ? prev.filter(p => p !== val) : [...prev, val]
+    );
+  }
 
   async function handleAvatarChange(e) {
     const file = e.target.files?.[0];
@@ -92,7 +103,8 @@ export default function MyProfilePage() {
 
     setSaving(true);
     try {
-      const body = { name: trimmedName, birth_year: byYear, position: position || null };
+      const positionStr = positions.length > 0 ? positions.join(",") : null;
+      const body = { name: trimmedName, birth_year: byYear, position: positionStr };
       const { data } = await api.patch("/api/users/me", body);
       updateUser({ name: data.name, birth_year: data.birth_year, position: data.position });
       setSaveMsg("저장되었습니다.");
@@ -195,18 +207,28 @@ export default function MyProfilePage() {
           />
         </div>
 
-        {/* Position */}
+        {/* Position (multi-select) */}
         <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1.5">포지션</label>
-          <select
-            value={position}
-            onChange={e => setPosition(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
+          <label className="block text-xs font-semibold text-slate-500 mb-2">
+            포지션
+            <span className="ml-1 font-normal text-slate-400">(복수 선택 가능)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
             {POSITIONS.map(p => (
-              <option key={p.value} value={p.value}>{p.label}</option>
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => togglePosition(p.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
+                  positions.includes(p.value)
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                }`}
+              >
+                {p.label}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {saveErr && (

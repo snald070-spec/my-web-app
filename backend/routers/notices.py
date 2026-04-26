@@ -87,6 +87,12 @@ def create_notice(
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error.")
 
+    try:
+        from services.push_service import send_push_to_all
+        send_push_to_all(db, f"📢 공지사항: {title}", text[:80], url="/notices")
+    except Exception:
+        pass
+
     return _serialize_notice(row)
 
 

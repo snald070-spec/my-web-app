@@ -93,84 +93,18 @@ function AdminView({ onPreview }) {
       )}
 
       {/* Module card grid — add a card per feature */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-        <ModuleCard
-          icon="👥"
-          title="회원 관리"
-          description="전체 계정을 조회하고 상태를 확인합니다."
-          to="/admin/users"
-          colour="blue"
-        />
-        <ModuleCard
-          icon="📢"
-          title="공지사항"
-          description="운영 공지를 작성하고 확인합니다."
-          to="/notices"
-          colour="green"
-        />
-        <ModuleCard
-          icon="💳"
-          title="회비 관리"
-          description="회원 회비 납부 현황을 조회하고 납부 완료를 체크합니다."
-          to="/fees"
-          colour="amber"
-        />
-        <ModuleCard
-          icon="🔔"
-          title="회비 납부 알림"
-          description="월말/월초 알림 대상을 조회하고 발송 기록을 관리합니다."
-          to="/fees"
-          colour="green"
-        />
-        <ModuleCard
-          icon="🗳️"
-          title="출석 투표"
-          description="출석 일정을 생성하고 회원 누적 출석을 관리합니다."
-          to="/attendance"
-          colour="blue"
-        />
-        <ModuleCard
-          icon="🏆"
-          title="리그전 운영"
-          description="시즌 생성, 경기 결과 입력, 주차별 순위를 관리합니다."
-          to="/league"
-          colour="amber"
-        />
-        <ModuleCard
-          icon="📋"
-          title="경기 기록지"
-          description="경기를 보면서 선수별 스탯을 실시간으로 입력합니다."
-          to="/league/scoresheet"
-          colour="green"
-        />
-        <ModuleCard
-          icon="📄"
-          title="기록지 조회"
-          description="저장된 경기 기록과 분석을 읽기 전용으로 확인합니다."
-          to="/league/scoresheet/view"
-          colour="blue"
-        />
-        <ModuleCard
-          icon="🔍"
-          title="회원 검색"
-          description="활동 회원 목록과 커리어 스탯을 확인합니다."
-          to="/members"
-          colour="green"
-        />
-        <ModuleCard
-          icon="📊"
-          title="내 스탯 보기"
-          description="내 커리어 통산 및 시즌별 기록을 확인합니다."
-          onClick={() => setStatsEmpId(user?.emp_id)}
-          colour="amber"
-        />
-        <ModuleCard
-          icon="👤"
-          title="내 정보 수정"
-          description="프로필 사진, 이름, 나이, 포지션을 수정합니다."
-          to="/profile"
-          colour="blue"
-        />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+        <ModuleCard icon="👥" title="회원 관리"    description="전체 계정을 조회하고 상태를 확인합니다."                          to="/admin/users"            colour="blue"   />
+        <ModuleCard icon="📢" title="공지사항"     description="운영 공지를 작성하고 확인합니다."                                to="/notices"                colour="green"  />
+        <ModuleCard icon="💳" title="회비 관리"    description="회원 회비 납부 현황을 조회하고 납부 완료를 체크합니다."              to="/fees"                   colour="amber"  />
+        <ModuleCard icon="🔔" title="회비 납부 알림" description="월말/월초 알림 대상을 조회하고 발송 기록을 관리합니다."           to="/fees"                   colour="orange" />
+        <ModuleCard icon="🗳️" title="출석 투표"    description="출석 일정을 생성하고 회원 누적 출석을 관리합니다."                  to="/attendance"             colour="purple" />
+        <ModuleCard icon="🏆" title="리그전 운영"   description="시즌 생성, 경기 결과 입력, 주차별 순위를 관리합니다."              to="/league"                 colour="indigo" />
+        <ModuleCard icon="📋" title="경기 기록지"   description="경기를 보면서 선수별 스탯을 실시간으로 입력합니다."                to="/league/scoresheet"      colour="teal"   />
+        <ModuleCard icon="📄" title="기록지 조회"   description="저장된 경기 기록과 분석을 읽기 전용으로 확인합니다."               to="/league/scoresheet/view" colour="cyan"   />
+        <ModuleCard icon="🔍" title="회원 검색"    description="활동 회원 목록과 커리어 스탯을 확인합니다."                        to="/members"                colour="pink"   />
+        <ModuleCard icon="📊" title="내 스탯 보기"  description="내 커리어 통산 및 시즌별 기록을 확인합니다."                      onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
+        <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진, 이름, 나이, 포지션을 수정합니다."                    to="/profile"                colour="rose"   />
       </div>
     </div>
   );
@@ -243,63 +177,15 @@ function MemberView() {
 
         <AttendanceSummary />
 
-        <div className="grid grid-cols-1 gap-3 mt-4">
-          <ModuleCard
-            icon="📢"
-            title="공지사항"
-            description="최신 운영 공지를 확인합니다."
-            to="/notices"
-            colour="green"
-          />
-          <ModuleCard
-            icon="💳"
-            title="회비 납부 현황"
-            description="이번 달 회비 납부 상태와 내 납부 이력을 확인합니다."
-            to="/fees"
-            colour="amber"
-          />
-          <ModuleCard
-            icon="🗳️"
-            title="출석 투표"
-            description="일정별로 참석/지각/불참을 투표하고 누적 출석을 확인합니다."
-            to="/attendance"
-            colour="blue"
-          />
-          <ModuleCard
-            icon="🏀"
-            title="리그전 현황"
-            description="시즌별 순위표, 경기 결과, 개인 스탯을 확인합니다."
-            to="/league/view"
-            colour="amber"
-          />
-          <ModuleCard
-            icon="📄"
-            title="경기 기록 조회"
-            description="저장된 경기 기록지와 경기 분석을 확인합니다."
-            to="/league/scoresheet/view"
-            colour="blue"
-          />
-          <ModuleCard
-            icon="🔍"
-            title="회원 검색"
-            description="활동 회원 목록, 포지션, 커리어 스탯을 한눈에 확인합니다."
-            to="/members"
-            colour="green"
-          />
-          <ModuleCard
-            icon="📊"
-            title="내 스탯 보기"
-            description="내 커리어 통산 및 시즌별 기록을 확인합니다."
-            onClick={() => setStatsEmpId(user?.emp_id)}
-            colour="amber"
-          />
-          <ModuleCard
-            icon="👤"
-            title="내 정보 수정"
-            description="프로필 사진, 이름, 나이, 포지션을 수정합니다."
-            to="/profile"
-            colour="blue"
-          />
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <ModuleCard icon="📢" title="공지사항"      description="최신 운영 공지를 확인합니다."                                  to="/notices"                colour="green"  />
+          <ModuleCard icon="💳" title="회비 납부 현황" description="이번 달 회비 납부 상태와 내 납부 이력을 확인합니다."             to="/fees"                   colour="amber"  />
+          <ModuleCard icon="🗳️" title="출석 투표"     description="일정별로 참석/지각/불참을 투표하고 누적 출석을 확인합니다."        to="/attendance"             colour="purple" />
+          <ModuleCard icon="🏀" title="리그전 현황"   description="시즌별 순위표, 경기 결과, 개인 스탯을 확인합니다."               to="/league/view"            colour="indigo" />
+          <ModuleCard icon="📄" title="경기 기록 조회" description="저장된 경기 기록지와 경기 분석을 확인합니다."                   to="/league/scoresheet/view" colour="teal"   />
+          <ModuleCard icon="🔍" title="회원 검색"     description="활동 회원 목록, 포지션, 커리어 스탯을 한눈에 확인합니다."         to="/members"                colour="pink"   />
+          <ModuleCard icon="📊" title="내 스탯 보기"  description="내 커리어 통산 및 시즌별 기록을 확인합니다."                    onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
+          <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진, 이름, 나이, 포지션을 수정합니다."                   to="/profile"                colour="rose"   />
         </div>
       </div>
     </div>
@@ -308,28 +194,38 @@ function MemberView() {
 
 /** Module shortcut card — supports Link (to) or button (onClick) */
 function ModuleCard({ icon, title, description, to, onClick, colour = "blue" }) {
-  const colours = {
-    blue:  "bg-blue-50  text-blue-600  hover:bg-blue-100",
-    green: "bg-green-50 text-green-600 hover:bg-green-100",
-    amber: "bg-amber-50 text-amber-700 hover:bg-amber-100",
+  const colourMap = {
+    blue:   { cardBg: "#dbeafe", iconCls: "bg-blue-200   text-blue-700" },
+    green:  { cardBg: "#bbf7d0", iconCls: "bg-green-200  text-green-700" },
+    amber:  { cardBg: "#fde68a", iconCls: "bg-amber-200  text-amber-800" },
+    orange: { cardBg: "#fed7aa", iconCls: "bg-orange-200 text-orange-700" },
+    purple: { cardBg: "#e9d5ff", iconCls: "bg-purple-200 text-purple-700" },
+    indigo: { cardBg: "#c7d2fe", iconCls: "bg-indigo-200 text-indigo-700" },
+    teal:   { cardBg: "#99f6e4", iconCls: "bg-teal-200   text-teal-700" },
+    cyan:   { cardBg: "#a5f3fc", iconCls: "bg-cyan-200   text-cyan-700" },
+    pink:   { cardBg: "#fbcfe8", iconCls: "bg-pink-200   text-pink-700" },
+    violet: { cardBg: "#ddd6fe", iconCls: "bg-violet-200 text-violet-700" },
+    rose:   { cardBg: "#fecdd3", iconCls: "bg-rose-200   text-rose-700" },
+    red:    { cardBg: "#fecaca", iconCls: "bg-red-200    text-red-700" },
   };
+  const c = colourMap[colour] ?? colourMap.blue;
   const inner = (
     <>
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${colours[colour]}`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3 ${c.iconCls}`}>
         {icon}
       </div>
-      <div>
-        <p className="font-bold text-gray-800 text-sm">{title}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{description}</p>
-      </div>
+      <p className="font-bold text-gray-800 text-sm leading-tight">{title}</p>
+      <p className="text-xs text-gray-400 mt-1 leading-relaxed line-clamp-2">{description}</p>
     </>
   );
+  const cardCls = "card p-4 flex flex-col items-center text-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 aspect-square justify-center";
   if (onClick) {
     return (
       <button
         type="button"
         onClick={onClick}
-        className="card p-5 flex items-start gap-4 text-left cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 w-full"
+        className={`${cardCls} w-full`}
+        style={{ backgroundColor: c.cardBg }}
       >
         {inner}
       </button>
@@ -338,7 +234,8 @@ function ModuleCard({ icon, title, description, to, onClick, colour = "blue" }) 
   return (
     <Link
       to={to}
-      className="card p-5 flex items-start gap-4 text-left cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+      className={cardCls}
+      style={{ backgroundColor: c.cardBg }}
     >
       {inner}
     </Link>

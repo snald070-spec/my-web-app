@@ -238,6 +238,14 @@ def create_event(
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Database error.")
+
+    try:
+        from services.push_service import send_push_to_all
+        push_body = f"📅 {row.event_date.strftime('%m/%d')} 출석 투표가 열렸습니다."
+        send_push_to_all(db, f"🗳️ {row.title}", push_body, url="/attendance")
+    except Exception:
+        pass
+
     return _serialize_event(db, row)
 
 

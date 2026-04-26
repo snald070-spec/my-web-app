@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { Component, useEffect, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Avatar from "./components/Avatar";
+import UpdateBanner from "./components/UpdateBanner";
 import LoginPage      from "./pages/LoginPage";
 import DashboardPage  from "./pages/DashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
@@ -347,13 +348,57 @@ function AndroidBackButtonHandler() {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
+// Google OAuth 리디렉션 콜백 처리 (인앱 브라우저 지원용)
+// Google이 #access_token=... 을 붙여 돌아왔을 때 로그인을 완성한다.
+function GoogleOAuthRedirectHandler() {
+  const { loginWithGoogle } = useAuth();
+  const handled = useRef(false);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    if (handled.current) return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    const returnedState = params.get("state");
+    const savedState = sessionStorage.getItem("google_oauth_state");
+
+    if (!accessToken || !returnedState || returnedState !== savedState) return;
+
+    handled.current = true;
+    sessionStorage.removeItem("google_oauth_state");
+    // 해시를 URL에서 제거
+    window.history.replaceState({}, "", window.location.pathname + window.location.search);
+
+    setProcessing(true);
+    loginWithGoogle(accessToken)
+      .then(() => {
+        const redirect = sessionStorage.getItem("loginRedirect");
+        sessionStorage.removeItem("loginRedirect");
+        window.location.replace(redirect || "/");
+      })
+      .catch(() => setProcessing(false));
+  }, [loginWithGoogle]);
+
+  if (!processing) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+      <p className="text-sm text-gray-500">Google 로그인 처리 중...</p>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <BrowserRouter>
         <AuthProvider>
           <AndroidBackButtonHandler />
+          <GoogleOAuthRedirectHandler />
           <AppRoutes />
+          <UpdateBanner />
         </AuthProvider>
       </BrowserRouter>
     </GoogleOAuthProvider>

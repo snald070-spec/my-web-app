@@ -422,7 +422,7 @@ class SelfProfileUpdate(BaseModel):
     position: str | None = None
 
 
-VALID_POSITIONS = {"PG", "SG", "SF", "PF", "C"}
+VALID_POSITIONS = {"PG", "SG", "SF", "PF", "C", "F", "G"}
 
 
 @router.patch("/me")
@@ -448,10 +448,14 @@ def update_my_profile(
         user.birth_year = body.birth_year
 
     if "position" in body.model_fields_set:
-        pos = (body.position or "").strip().upper() or None
-        if pos and pos not in VALID_POSITIONS:
-            raise HTTPException(status_code=422, detail="포지션 값이 올바르지 않습니다.")
-        user.position = pos
+        raw = (body.position or "").strip()
+        if raw:
+            parts = [p.strip().upper() for p in raw.split(",") if p.strip()]
+            if not all(p in VALID_POSITIONS for p in parts):
+                raise HTTPException(status_code=422, detail="포지션 값이 올바르지 않습니다.")
+            user.position = ",".join(parts)
+        else:
+            user.position = None
 
     db.commit()
     db.refresh(user)

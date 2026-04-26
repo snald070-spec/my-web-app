@@ -84,6 +84,8 @@ def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> models.User:
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired credentials.",
@@ -93,15 +95,19 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         emp_id: str = payload.get("sub")
         if emp_id is None:
+            _log.warning("get_current_user: token has no sub claim")
             raise exc
-    except JWTError:
+    except JWTError as e:
+        _log.warning("get_current_user: JWT decode failed — %s", e)
         raise exc
 
     user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
     if user is None:
+        _log.warning("get_current_user: user not found for emp_id=%r", emp_id)
         raise exc
     if getattr(user, "is_resigned", False):
-        raise exc  # treat deactivated account same as invalid token → triggers frontend logout
+        _log.warning("get_current_user: resigned user emp_id=%r", emp_id)
+        raise exc
     return user
 
 

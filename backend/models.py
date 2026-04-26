@@ -541,3 +541,15 @@ class AttendanceReminderLog(Base):
     sent_by = Column(String(50), nullable=False)
     memo = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    emp_id = Column(String(50), nullable=False, index=True)
+    endpoint = Column(Text, nullable=False, unique=True)
+    p256dh = Column(Text, nullable=False)
+    auth = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

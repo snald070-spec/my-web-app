@@ -22,7 +22,7 @@ from auth import (
     get_current_user, require_admin, validate_password_policy,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
-from routers import dashboard, users, notices, fees, attendance, league
+from routers import dashboard, users, notices, fees, attendance, league, notifications
 from logging_config import setup_logging
 
 load_dotenv()
@@ -72,6 +72,13 @@ def _ensure_user_profile_columns():
 
 _ensure_league_team_assignment_columns()
 _ensure_user_profile_columns()
+
+# VAPID 키 초기화 (없으면 자동 생성)
+try:
+    from services.push_service import ensure_vapid_keys
+    ensure_vapid_keys()
+except Exception as _e:
+    logger.warning("VAPID 키 초기화 실패 (push 알림 비활성): %s", _e)
 
 
 @asynccontextmanager
@@ -239,7 +246,7 @@ async def add_security_headers(request: Request, call_next):
         "camera=(), microphone=(), geolocation=(), payment=(), "
         "usb=(), bluetooth=(), accelerometer=(), gyroscope=()"
     )
-    connect_src = f"'self' https://accounts.google.com https://oauth2.googleapis.com {_CSP_CONNECT_SRC}".strip()
+    connect_src = f"'self' https://accounts.google.com https://oauth2.googleapis.com https://fcm.googleapis.com {_CSP_CONNECT_SRC}".strip()
     response.headers["Content-Security-Policy"] = (
         f"default-src 'self'; "
         f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; "
@@ -312,7 +319,7 @@ app.include_router(notices.router)
 app.include_router(fees.router)
 app.include_router(attendance.router)
 app.include_router(league.router)
-# Add more routers here: app.include_router(my_feature.router)
+app.include_router(notifications.router)
 
 
 # ── Auth endpoints ────────────────────────────────────────────────────────────
@@ -460,7 +467,8 @@ def complete_profile(
         raise HTTPException(status_code=400, detail="이름을 입력해주세요.")
     if not (1930 <= body.birth_year <= 2015):
         raise HTTPException(status_code=400, detail="올바른 출생연도를 입력해주세요.")
-    if body.position not in _ALLOWED_POSITIONS:
+    pos_list = [p.strip() for p in body.position.split(",") if p.strip()]
+    if not pos_list or not all(p in _ALLOWED_POSITIONS for p in pos_list):
         raise HTTPException(status_code=400, detail="올바른 포지션을 선택해주세요.")
     if body.birthday and not _re.match(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$", body.birthday):
         raise HTTPException(status_code=400, detail="생일 형식이 올바르지 않습니다. (MM-DD)")
@@ -503,7 +511,8 @@ def complete_profile(
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str  # Google ID token (JWT) from frontend
+    credential: str | None = None    # ID token (구버전 호환)
+    access_token: str | None = None  # Access token (모바일 팝업 플로우)
 
 
 @app.post("/api/auth/google")
@@ -511,22 +520,46 @@ def google_login(
     body: GoogleLoginRequest,
     db: Session = Depends(get_db),
 ):
-    """Google OAuth 로그인. 프론트에서 받은 Google ID token을 검증 후 자체 JWT 발급."""
+    """Google OAuth 로그인. ID token 또는 access_token을 검증 후 자체 JWT 발급."""
     google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
     if not google_client_id:
         raise HTTPException(status_code=503, detail="Google 로그인이 서버에 설정되지 않았습니다. 관리자에게 문의하세요.")
 
-    try:
-        from google.oauth2 import id_token as google_id_token
-        from google.auth.transport import requests as google_requests
-        id_info = google_id_token.verify_oauth2_token(
-            body.credential,
-            google_requests.Request(),
-            google_client_id,
-        )
-    except Exception as e:
-        logger.warning("Google token verification failed: %s", e)
-        raise HTTPException(status_code=401, detail="Google 인증에 실패했습니다. 다시 시도해주세요.")
+    if not body.credential and not body.access_token:
+        raise HTTPException(status_code=400, detail="Google 인증 정보가 없습니다.")
+
+    if body.credential:
+        # ID token 검증 (기존 플로우)
+        try:
+            from google.oauth2 import id_token as google_id_token
+            from google.auth.transport import requests as google_requests
+            id_info = google_id_token.verify_oauth2_token(
+                body.credential,
+                google_requests.Request(),
+                google_client_id,
+            )
+        except Exception as e:
+            logger.warning("Google ID token verification failed: %s", e)
+            raise HTTPException(status_code=401, detail="Google 인증에 실패했습니다. 다시 시도해주세요.")
+    else:
+        # Access token 검증 (모바일 팝업 플로우 — FedCM 우회)
+        import requests as _http
+        try:
+            resp = _http.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"access_token": body.access_token},
+                timeout=10,
+            )
+            if not resp.ok:
+                raise ValueError(f"tokeninfo status {resp.status_code}")
+            id_info = resp.json()
+        except Exception as e:
+            logger.warning("Google access_token tokeninfo failed: %s", e)
+            raise HTTPException(status_code=401, detail="Google 인증에 실패했습니다. 다시 시도해주세요.")
+        # 발급 대상 검증
+        if id_info.get("azp") != google_client_id and id_info.get("aud") != google_client_id:
+            logger.warning("Google tokeninfo azp/aud mismatch: %s", id_info)
+            raise HTTPException(status_code=401, detail="Google 토큰 검증에 실패했습니다.")
 
     google_sub = id_info.get("sub", "")
     google_email = (id_info.get("email") or "").strip().lower()
