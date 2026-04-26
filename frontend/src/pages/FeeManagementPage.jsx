@@ -33,6 +33,7 @@ const planLabel = {
 export default function FeeManagementPage() {
   const { user } = useAuth();
   const isAdmin = ["MASTER", "ADMIN"].includes(user?.role);
+  const isMaster = user?.role === "MASTER";
 
   const [activeTab, setActiveTab] = useState("status"); // "status" | "reminders"
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
@@ -69,6 +70,15 @@ export default function FeeManagementPage() {
   const [depositRawText, setDepositRawText] = useState("");
   const [depositAutoApply, setDepositAutoApply] = useState(true);
   const [depositLoading, setDepositLoading] = useState(false);
+
+  // MASTER: 납부 기록 수정/삭제 모달
+  const [paymentModal, setPaymentModal] = useState({ open: false, empId: "", name: "", payments: [], loading: false });
+  const [editingPayment, setEditingPayment] = useState(null);
+
+  // MASTER: 회비 공개 기간 설정
+  const [feeSettings, setFeeSettings] = useState({ fee_history_months: 12 });
+  const [feeSettingsInput, setFeeSettingsInput] = useState(12);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const unpaidCount = useMemo(() => members.filter((m) => !m.is_paid).length, [members]);
   const unpaidMembers = useMemo(() => members.filter((m) => !m.is_paid), [members]);
@@ -158,6 +168,75 @@ export default function FeeManagementPage() {
     setDepositLogs(getItems(data));
   }
 
+  async function loadFeeSettings() {
+    if (!isMaster) return;
+    try {
+      const { data } = await api.get("/api/fees/admin/settings");
+      setFeeSettings(data);
+      setFeeSettingsInput(data.fee_history_months);
+    } catch {}
+  }
+
+  async function openPaymentModal(empId, name) {
+    setPaymentModal({ open: true, empId, name, payments: [], loading: true });
+    setEditingPayment(null);
+    try {
+      const { data } = await api.get(`/api/fees/admin/members/${empId}/payments?skip=0&limit=50`);
+      setPaymentModal(prev => ({ ...prev, payments: getItems(data), loading: false }));
+    } catch {
+      setPaymentModal(prev => ({ ...prev, loading: false }));
+    }
+  }
+
+  async function handleEditPayment(paymentId) {
+    if (!editingPayment || editingPayment.id !== paymentId) return;
+    setErr("");
+    try {
+      await api.patch(`/api/fees/admin/payments/${paymentId}`, {
+        paid_amount: Number(editingPayment.paid_amount),
+        note: editingPayment.note,
+        year_month: editingPayment.year_month,
+      });
+      setEditingPayment(null);
+      await Promise.all([
+        openPaymentModal(paymentModal.empId, paymentModal.name),
+        loadAdminView(),
+      ]);
+      setSuccess("납부 기록을 수정했습니다.");
+    } catch (e) {
+      setErr(e.response?.data?.detail || "수정에 실패했습니다.");
+    }
+  }
+
+  async function handleDeletePayment(paymentId) {
+    if (!window.confirm("이 납부 기록을 삭제하시겠습니까?")) return;
+    setErr("");
+    try {
+      await api.delete(`/api/fees/admin/payments/${paymentId}`);
+      await Promise.all([
+        openPaymentModal(paymentModal.empId, paymentModal.name),
+        loadAdminView(),
+      ]);
+      setSuccess("납부 기록을 삭제했습니다.");
+    } catch (e) {
+      setErr(e.response?.data?.detail || "삭제에 실패했습니다.");
+    }
+  }
+
+  async function handleSaveFeeSettings() {
+    setSavingSettings(true);
+    setErr("");
+    try {
+      const { data } = await api.patch("/api/fees/admin/settings", { months: Number(feeSettingsInput) });
+      setFeeSettings(data);
+      setSuccess("설정을 저장했습니다.");
+    } catch (e) {
+      setErr(e.response?.data?.detail || "설정 저장에 실패했습니다.");
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   async function loadAll() {
     setLoading(true);
     setErr("");
@@ -166,6 +245,7 @@ export default function FeeManagementPage() {
         await loadAdminView();
         await loadReminderLogs();
         await loadDepositLogs();
+        await loadFeeSettings();
       } else {
         await loadMemberView();
       }
@@ -322,6 +402,106 @@ export default function FeeManagementPage() {
   return (
     <div className="page-container">
       {success && <div className="fixed right-4 top-4 z-[70] alert-success shadow-lg">{success}</div>}
+
+      {/* 납부 기록 수정/삭제 모달 (MASTER only) */}
+      {paymentModal.open && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-10 px-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <p className="font-bold text-gray-900">{paymentModal.name} 납부 기록 관리</p>
+              <button
+                className="text-gray-400 hover:text-gray-600 text-xl"
+                onClick={() => setPaymentModal({ open: false, empId: "", name: "", payments: [], loading: false })}
+              >✕</button>
+            </div>
+            <div className="p-4">
+              {paymentModal.loading ? (
+                <div className="flex justify-center py-8"><span className="spinner" /></div>
+              ) : paymentModal.payments.length === 0 ? (
+                <p className="text-center text-gray-400 py-8">납부 기록이 없습니다.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table text-sm">
+                    <thead>
+                      <tr>
+                        <th>기준 월</th>
+                        <th>금액</th>
+                        <th>커버 기간</th>
+                        <th>메모</th>
+                        <th>확인자</th>
+                        <th>수정</th>
+                        <th>삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentModal.payments.map((p) => {
+                        const isEditing = editingPayment?.id === p.id;
+                        return (
+                          <tr key={p.id}>
+                            <td>
+                              {isEditing ? (
+                                <input
+                                  type="month"
+                                  className="field-input text-xs"
+                                  style={{ width: 130 }}
+                                  value={editingPayment.year_month}
+                                  onChange={(e) => setEditingPayment(prev => ({ ...prev, year_month: e.target.value }))}
+                                />
+                              ) : p.year_month}
+                            </td>
+                            <td>
+                              {isEditing ? (
+                                <input
+                                  type="number"
+                                  className="field-input text-xs"
+                                  style={{ width: 100 }}
+                                  value={editingPayment.paid_amount}
+                                  onChange={(e) => setEditingPayment(prev => ({ ...prev, paid_amount: e.target.value }))}
+                                />
+                              ) : `${Number(p.paid_amount || 0).toLocaleString("ko-KR")}원`}
+                            </td>
+                            <td className="text-xs whitespace-nowrap">{p.coverage_start_month} ~ {p.coverage_end_month}</td>
+                            <td>
+                              {isEditing ? (
+                                <input
+                                  className="field-input text-xs"
+                                  style={{ width: 120 }}
+                                  value={editingPayment.note ?? ""}
+                                  onChange={(e) => setEditingPayment(prev => ({ ...prev, note: e.target.value }))}
+                                />
+                              ) : (p.note || "-")}
+                            </td>
+                            <td className="text-xs">{p.marked_by}</td>
+                            <td>
+                              {isEditing ? (
+                                <div className="flex gap-1">
+                                  <button className="btn-primary btn btn-sm text-xs" onClick={() => handleEditPayment(p.id)}>저장</button>
+                                  <button className="btn-secondary btn btn-sm text-xs" onClick={() => setEditingPayment(null)}>취소</button>
+                                </div>
+                              ) : (
+                                <button
+                                  className="btn-secondary btn btn-sm text-xs"
+                                  onClick={() => setEditingPayment({ id: p.id, paid_amount: p.paid_amount, note: p.note || "", year_month: p.year_month })}
+                                >수정</button>
+                              )}
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-sm text-xs text-red-600 hover:bg-red-50 border border-red-200 rounded-lg px-2 py-1"
+                                onClick={() => handleDeletePayment(p.id)}
+                              >삭제</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-6">
         {/* 헤더 */}
@@ -548,6 +728,33 @@ export default function FeeManagementPage() {
                   </div>
                 </div>
 
+                {isMaster && (
+                  <div className="card p-4">
+                    <p className="section-title mb-3">마스터 설정 — 회원 납부 내역 공개 기간</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <label className="text-sm text-gray-600">일반 회원에게 최근</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={36}
+                        className="field-input"
+                        style={{ width: 90 }}
+                        value={feeSettingsInput}
+                        onChange={(e) => setFeeSettingsInput(e.target.value)}
+                      />
+                      <label className="text-sm text-gray-600">개월치 납부 이력을 공개합니다.</label>
+                      <button
+                        className="btn-primary btn btn-sm"
+                        disabled={savingSettings}
+                        onClick={handleSaveFeeSettings}
+                      >
+                        {savingSettings ? "저장 중..." : "저장"}
+                      </button>
+                      <span className="text-xs text-gray-400">현재: {feeSettings.fee_history_months}개월</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="card p-4">
                   <div className="action-bar">
                     <input
@@ -586,12 +793,13 @@ export default function FeeManagementPage() {
                           <th>이번 달 납부</th>
                           <th>납부 체크</th>
                           <th>저장</th>
+                          {isMaster && <th>납부 기록</th>}
                         </tr>
                       </thead>
                       <tbody>
                         {members.length === 0 ? (
                           <tr>
-                            <td colSpan={9}>
+                            <td colSpan={isMaster ? 9 : 8}>
                               <div className="empty-state py-10">
                                 <p className="empty-state-text">조회 결과가 없습니다.</p>
                               </div>
@@ -672,6 +880,16 @@ export default function FeeManagementPage() {
                                 저장
                               </button>
                             </td>
+                            {isMaster && (
+                              <td>
+                                <button
+                                  className="btn-secondary btn btn-sm"
+                                  onClick={() => openPaymentModal(m.emp_id, m.name)}
+                                >
+                                  납부 기록
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>

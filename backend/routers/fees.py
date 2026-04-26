@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import hashlib
 import os
 
-from auth import get_current_user, require_admin
+from auth import get_current_user, require_admin, require_master
 from database import get_db
 from utils.pagination import paginate
 import models
@@ -124,6 +124,39 @@ class DepositIngestBody(BaseModel):
     account_holder: str = TARGET_ACCOUNT_HOLDER
     raw_text: str | None = None
     auto_apply: bool = True
+
+
+class EditPaymentBody(BaseModel):
+    paid_amount: int | None = None
+    note: str | None = None
+    year_month: str | None = None
+
+
+class FeeHistorySettingBody(BaseModel):
+    months: int  # 1 ~ 36
+
+
+FEE_HISTORY_MONTHS_KEY = "fee_history_months"
+FEE_HISTORY_MONTHS_DEFAULT = 12
+
+
+def _get_fee_history_months(db: Session) -> int:
+    row = db.query(models.SystemSetting).filter(models.SystemSetting.key == FEE_HISTORY_MONTHS_KEY).first()
+    if row:
+        try:
+            return max(1, min(36, int(row.value)))
+        except (ValueError, TypeError):
+            pass
+    return FEE_HISTORY_MONTHS_DEFAULT
+
+
+def _set_fee_history_months(db: Session, months: int, actor_emp_id: str) -> None:
+    row = db.query(models.SystemSetting).filter(models.SystemSetting.key == FEE_HISTORY_MONTHS_KEY).first()
+    if row:
+        row.value = str(months)
+        row.updated_by = actor_emp_id
+    else:
+        db.add(models.SystemSetting(key=FEE_HISTORY_MONTHS_KEY, value=str(months), updated_by=actor_emp_id))
 
 
 def _normalize_name(name: str) -> str:
@@ -472,9 +505,15 @@ def get_my_fee_history(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    history_months = _get_fee_history_months(db)
+    cutoff_ym = _add_months(_current_year_month(), -(history_months - 1))
+
     q = (
         db.query(models.MembershipPayment)
-        .filter(models.MembershipPayment.emp_id == current_user.emp_id)
+        .filter(
+            models.MembershipPayment.emp_id == current_user.emp_id,
+            models.MembershipPayment.year_month >= cutoff_ym,
+        )
         .order_by(desc(models.MembershipPayment.marked_at), desc(models.MembershipPayment.id))
     )
 
@@ -1147,3 +1186,139 @@ def list_deposit_logs(
             "created_at": r.created_at,
         },
     )
+
+
+# ===== MASTER 전용: 납부 기록 수정/삭제 =====
+
+@router.get("/admin/members/{emp_id}/payments")
+def list_member_payments(
+    emp_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    user = db.query(models.User).filter(models.User.emp_id == emp_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
+
+    q = (
+        db.query(models.MembershipPayment)
+        .filter(models.MembershipPayment.emp_id == emp_id)
+        .order_by(desc(models.MembershipPayment.marked_at), desc(models.MembershipPayment.id))
+    )
+    return paginate(
+        q,
+        skip,
+        limit,
+        lambda r: {
+            "id": r.id,
+            "year_month": r.year_month,
+            "plan_type": r.plan_type.value,
+            "coverage_start_month": r.coverage_start_month,
+            "coverage_end_month": r.coverage_end_month,
+            "expected_amount": r.expected_amount,
+            "paid_amount": r.paid_amount,
+            "is_paid": bool(r.is_paid),
+            "note": r.note,
+            "marked_by": r.marked_by,
+            "marked_at": r.marked_at,
+        },
+    )
+
+
+@router.patch("/admin/payments/{payment_id}")
+def edit_payment(
+    payment_id: int,
+    body: EditPaymentBody,
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    row = db.query(models.MembershipPayment).filter(models.MembershipPayment.id == payment_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="납부 기록을 찾을 수 없습니다.")
+
+    if body.paid_amount is not None:
+        if body.paid_amount < 0:
+            raise HTTPException(status_code=400, detail="paid_amount는 0 이상이어야 합니다.")
+        row.paid_amount = body.paid_amount
+
+    if body.note is not None:
+        row.note = body.note.strip() or None
+
+    if body.year_month is not None:
+        ym = body.year_month.strip()
+        if _ym_to_int(ym) < 0:
+            raise HTTPException(status_code=400, detail="year_month must be YYYY-MM")
+        row.year_month = ym
+
+    row.marked_by = master_user.emp_id
+
+    try:
+        db.commit()
+        db.refresh(row)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error.")
+
+    return {
+        "id": row.id,
+        "year_month": row.year_month,
+        "plan_type": row.plan_type.value,
+        "coverage_start_month": row.coverage_start_month,
+        "coverage_end_month": row.coverage_end_month,
+        "paid_amount": row.paid_amount,
+        "is_paid": bool(row.is_paid),
+        "note": row.note,
+        "marked_by": row.marked_by,
+        "marked_at": row.marked_at,
+    }
+
+
+@router.delete("/admin/payments/{payment_id}", status_code=204)
+def delete_payment(
+    payment_id: int,
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    row = db.query(models.MembershipPayment).filter(models.MembershipPayment.id == payment_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="납부 기록을 찾을 수 없습니다.")
+
+    try:
+        db.delete(row)
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error.")
+
+
+# ===== MASTER 전용: 회비 공개 기간 설정 =====
+
+@router.get("/admin/settings")
+def get_fee_settings(
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    months = _get_fee_history_months(db)
+    return {"fee_history_months": months}
+
+
+@router.patch("/admin/settings")
+def update_fee_settings(
+    body: FeeHistorySettingBody,
+    master_user: models.User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    if body.months < 1 or body.months > 36:
+        raise HTTPException(status_code=400, detail="months는 1~36 사이여야 합니다.")
+
+    _set_fee_history_months(db, body.months, master_user.emp_id)
+
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error.")
+
+    return {"fee_history_months": body.months}
