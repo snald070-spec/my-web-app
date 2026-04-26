@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icon-192.png', 'icon-512.png'],
+      includeAssets: ['icon-192.png', 'icon-192-maskable.png', 'icon-512.png', 'icon-512-maskable.png'],
       manifest: {
         id: '/',
         name: 'Draw Basketball Team',
@@ -27,7 +27,7 @@ export default defineConfig({
             purpose: 'any',
           },
           {
-            src: '/icon-192.png',
+            src: '/icon-192-maskable.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'maskable',
@@ -39,7 +39,7 @@ export default defineConfig({
             purpose: 'any',
           },
           {
-            src: '/icon-512.png',
+            src: '/icon-512-maskable.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
