@@ -62,43 +62,19 @@ export default function InstallBanner() {
 
   if (!visible) return null
 
-  // ── 삼성 인터넷: "홈 화면" 바로가기 안내 ─────────────────────────────────
-  // prompt() 대신 수동 안내 — "홈 화면" 방식은 WebAPK 없음, Play Protect 없음
+  // ── 삼성 인터넷: 홈 화면 바로가기 안내 ──────────────────────────────────
   if (mode === 'samsung-manual') {
     return (
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
-        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-4">
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <img src="/icon-192.png" alt="" className="w-7 h-7 object-contain shrink-0" />
-              <p className="text-sm font-bold">홈 화면에 앱 추가하기</p>
-            </div>
-            <button onClick={dismiss} className="text-gray-400 hover:text-white text-xl leading-none shrink-0 -mt-0.5">✕</button>
-          </div>
-
-          <div className="flex gap-2.5 mb-2.5">
-            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">1</span>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              화면 <span className="text-white font-semibold">맨 아래 오른쪽</span>{' '}
-              <span className="bg-gray-700 text-white text-xs px-1.5 py-0.5 rounded font-mono">⋮</span>{' '}
-              버튼 탭
+        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3.5 flex items-center gap-3">
+          <img src="/icon-192.png" alt="" className="w-8 h-8 object-contain shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold leading-tight">홈 화면에 추가</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              <span className="text-gray-300">⋮</span> → 페이지 추가 → <span className="text-white font-semibold">홈 화면</span>
             </p>
           </div>
-
-          <div className="flex gap-2.5 mb-2.5">
-            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">2</span>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              <span className="text-white font-semibold">"페이지 추가"</span> 탭
-            </p>
-          </div>
-
-          <div className="flex gap-2.5">
-            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">3</span>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              <span className="text-white font-semibold">"홈 화면"</span> 탭{' '}
-              <span className="text-yellow-400 font-semibold">← "웹앱으로 설치" 말고 이것</span>
-            </p>
-          </div>
+          <button onClick={dismiss} className="text-gray-500 hover:text-white text-lg leading-none shrink-0">✕</button>
         </div>
       </div>
     )
