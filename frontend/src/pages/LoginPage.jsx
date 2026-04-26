@@ -224,9 +224,7 @@ export default function LoginPage() {
 
       {/* ── Brand mark ───────────────────────────────────────────── */}
       <div className="mb-8 flex flex-col items-center gap-2">
-        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-          <span className="text-white font-bold text-xl">DB</span>
-        </div>
+        <img src="/icon-192.png" alt="Draw Basketball" className="w-20 h-20 object-contain drop-shadow-lg" />
         <p className="text-sm font-medium text-gray-400 tracking-wide">Draw Basketball Team</p>
       </div>
 

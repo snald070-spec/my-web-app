@@ -144,9 +144,7 @@ export default function GoogleProfileSetupPage() {
 
         {/* 헤더 */}
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow">
-            <span className="text-white font-bold text-lg">DB</span>
-          </div>
+          <img src="/icon-192.png" alt="Draw Basketball" className="w-16 h-16 object-contain drop-shadow-md mx-auto mb-3" />
           <h1 className="text-lg font-bold text-gray-800">프로필 설정</h1>
           <p className="text-sm text-gray-400 mt-1">
             Draw Basketball 가입을 완료해주세요.
