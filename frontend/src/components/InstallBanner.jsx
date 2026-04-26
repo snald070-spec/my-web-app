@@ -78,26 +78,42 @@ export default function InstallBanner() {
   if (mode === 'samsung-manual') {
     return (
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
-        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3.5">
-          <div className="flex items-start justify-between gap-2 mb-2.5">
+        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-4">
+          <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <img src="/icon-192.png" alt="" className="w-7 h-7 object-contain shrink-0" />
               <p className="text-sm font-bold">홈 화면에 앱 추가하기</p>
             </div>
-            <button onClick={dismiss} className="text-gray-400 hover:text-white text-lg leading-none shrink-0">✕</button>
+            <button onClick={dismiss} className="text-gray-400 hover:text-white text-xl leading-none shrink-0 -mt-0.5">✕</button>
           </div>
-          {/* 방법 1: 주소창 설치 아이콘 */}
-          <p className="text-xs text-gray-300 leading-relaxed mb-1.5">
-            <span className="text-white font-semibold">방법 1</span> —{' '}
-            주소창 오른쪽 <span className="text-white font-semibold">⊕ 아이콘</span> 탭 → 추가
-          </p>
-          {/* 방법 2: 메뉴 */}
-          <p className="text-xs text-gray-300 leading-relaxed">
-            <span className="text-white font-semibold">방법 2</span> —{' '}
-            하단 우측 <span className="text-white font-semibold">⋮</span> 탭 →{' '}
-            <span className="text-white font-semibold">페이지 추가</span> →{' '}
-            <span className="text-white font-semibold">홈 화면</span>
-          </p>
+
+          {/* Step 1 */}
+          <div className="flex gap-2.5 mb-2">
+            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              화면 <span className="text-white font-semibold">맨 아래 오른쪽</span>{' '}
+              <span className="bg-gray-700 text-white text-xs px-1.5 py-0.5 rounded font-mono">⋮</span>{' '}
+              버튼 탭
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex gap-2.5 mb-2">
+            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              메뉴에서{' '}
+              <span className="text-white font-semibold">"페이지 추가"</span> 탭
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div className="flex gap-2.5">
+            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              <span className="text-white font-semibold">"홈 화면"</span>{' '}
+              선택 → <span className="text-white font-semibold">"추가"</span> 탭
+            </p>
+          </div>
         </div>
       </div>
     )
