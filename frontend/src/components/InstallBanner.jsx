@@ -1,48 +1,54 @@
 import { useEffect, useState } from 'react'
 
-function isIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream
-}
-
 function isInStandaloneMode() {
   return window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone
 }
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream
+}
+function isSamsungBrowser() {
+  return /SamsungBrowser/i.test(navigator.userAgent)
+}
+function isAndroid() {
+  return /Android/i.test(navigator.userAgent)
+}
 
-// 이번 세션에서만 숨기기 (재방문 시 다시 표시)
 const SESSION_KEY = 'pwa-install-hidden'
 
 export default function InstallBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [visible, setVisible] = useState(false)
-  const [mode, setMode] = useState(null) // 'android-prompt' | 'android-manual' | 'ios'
+  const [mode, setMode] = useState(null)
+  // 'samsung-manual' | 'chrome-guide' | 'android-prompt' | 'android-manual' | 'ios'
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
 
   useEffect(() => {
     if (isInStandaloneMode()) return
     if (sessionStorage.getItem(SESSION_KEY)) return
 
     if (isIOS()) {
-      setMode('ios')
-      setVisible(true)
-      return
+      setMode('ios'); setVisible(true); return
     }
 
-    // Android/Chrome: beforeinstallprompt 이벤트 대기 (최대 3초)
+    if (!isAndroid()) return // 데스크탑 제외
+
+    if (isSamsungBrowser()) {
+      // 삼성 인터넷: 메뉴 바로가기 방식 안내 (WebAPK 아님 → Play Protect 없음)
+      setMode('samsung-manual'); setVisible(true); return
+    }
+
+    // Chrome / 기타 Android 브라우저
+    // beforeinstallprompt 캡처는 하되, prompt() 는 Samsung Internet 유도 후 마지막 수단으로만 사용
     let timer
     function onBeforeInstall(e) {
       e.preventDefault()
       clearTimeout(timer)
       setDeferredPrompt(e)
-      setMode('android-prompt')
+      setMode('chrome-guide')
       setVisible(true)
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
-
-    // 3초 내 이벤트 없으면 수동 설치 안내
     timer = setTimeout(() => {
-      if (!deferredPrompt) {
-        setMode('android-manual')
-        setVisible(true)
-      }
+      if (!deferredPrompt) { setMode('android-manual'); setVisible(true) }
     }, 3000)
 
     return () => {
@@ -57,7 +63,8 @@ export default function InstallBanner() {
     setVisible(false)
   }
 
-  async function handleInstall() {
+  async function handleChromeInstall() {
+    // Chrome WebAPK 방식 — Play Protect 경고가 뜰 수 있음을 인지한 상태에서 시도
     if (!deferredPrompt) return
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
@@ -67,24 +74,59 @@ export default function InstallBanner() {
 
   if (!visible) return null
 
-  if (mode === 'android-prompt') {
+  // ── 삼성 인터넷: 메뉴 → 홈 화면에 추가 ───────────────────────────────────
+  if (mode === 'samsung-manual') {
     return (
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
-        <div className="bg-blue-900 text-white rounded-2xl shadow-2xl px-4 py-3 flex items-center gap-3">
-          <img src="/icon-192.png" alt="" className="w-8 h-8 object-contain shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold leading-tight">앱으로 설치하기</p>
-            <p className="text-xs text-blue-200 mt-0.5">알림 · 빠른 실행 · 오프라인 지원</p>
+        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3.5">
+          <div className="flex items-start justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <img src="/icon-192.png" alt="" className="w-7 h-7 object-contain shrink-0" />
+              <p className="text-sm font-bold">홈 화면에 앱 추가하기</p>
+            </div>
+            <button onClick={dismiss} className="text-gray-400 hover:text-white text-lg leading-none shrink-0">✕</button>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={dismiss} className="text-xs text-blue-300 hover:text-white px-1 py-1 transition-colors">
-              나중에
-            </button>
+          <p className="text-xs text-gray-300 leading-relaxed">
+            화면 하단 <span className="text-white font-semibold">≡ 메뉴</span> 탭 →{' '}
+            <span className="text-white font-semibold">+</span> 추가 →{' '}
+            <span className="text-white font-semibold">홈 화면</span> 선택
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Chrome: 삼성 인터넷 경유 권장 ─────────────────────────────────────────
+  if (mode === 'chrome-guide') {
+    return (
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
+        <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-4">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <img src="/icon-192.png" alt="" className="w-7 h-7 object-contain shrink-0" />
+              <p className="text-sm font-bold">홈 화면에 앱 추가하기</p>
+            </div>
+            <button onClick={dismiss} className="text-gray-400 hover:text-white text-lg leading-none shrink-0">✕</button>
+          </div>
+
+          {/* 권장: 삼성 인터넷 */}
+          <div className="bg-blue-800 rounded-xl px-3 py-2.5 mb-2">
+            <p className="text-xs font-bold text-blue-200 mb-1">✅ 권장 방법 (Play Protect 없음)</p>
+            <p className="text-xs text-white leading-relaxed">
+              <span className="font-semibold">삼성 인터넷</span> 앱으로 접속 →{' '}
+              하단 <span className="font-semibold">≡</span> →{' '}
+              추가 → <span className="font-semibold">홈 화면</span>
+            </p>
+          </div>
+
+          {/* 대안: 크롬 직접 설치 */}
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <p className="text-xs text-gray-400">크롬으로 직접 설치 (Play Protect 경고 가능)</p>
             <button
-              onClick={handleInstall}
-              className="bg-white text-blue-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+              onClick={handleChromeInstall}
+              className="shrink-0 bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              설치
+              그래도 설치
             </button>
           </div>
         </div>
@@ -92,6 +134,7 @@ export default function InstallBanner() {
     )
   }
 
+  // ── Android 수동 (beforeinstallprompt 없음) ───────────────────────────────
   if (mode === 'android-manual') {
     return (
       <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
@@ -104,16 +147,16 @@ export default function InstallBanner() {
             <button onClick={dismiss} className="text-gray-400 hover:text-white text-lg leading-none shrink-0">✕</button>
           </div>
           <p className="text-xs text-gray-300 leading-relaxed">
-            브라우저 우측 상단 <span className="text-white font-semibold">⋮ 메뉴</span> 탭 →{' '}
-            <span className="text-white font-semibold">"홈 화면에 추가"</span> 또는{' '}
-            <span className="text-white font-semibold">"앱 설치"</span> 선택
+            <span className="text-white font-semibold">삼성 인터넷</span> 앱으로 접속 →{' '}
+            하단 <span className="text-white font-semibold">≡</span> → 추가 →{' '}
+            <span className="text-white font-semibold">홈 화면</span> 선택
           </p>
         </div>
       </div>
     )
   }
 
-  // iOS
+  // ── iOS Safari ─────────────────────────────────────────────────────────────
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
       <div className="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3.5">
