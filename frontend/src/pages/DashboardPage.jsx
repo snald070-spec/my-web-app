@@ -161,8 +161,7 @@ function AdminView({ onPreview }) {
         <div className="grid grid-cols-2 gap-3">
           <ModuleCard icon="👥" title="회원 관리"     description="전체 계정 조회 · 상태 관리"        to="/admin/users"            colour="blue"   />
           <ModuleCard icon="📢" title="공지사항"      description="최신 운영 공지 작성 · 확인"         to="/notices"                colour="green"  />
-          <ModuleCard icon="💳" title="회비 관리"     description="회비 납부 현황 · 납부 처리"          to="/fees"                   colour="amber"  />
-          <ModuleCard icon="🔔" title="회비 납부 알림" description="알림 대상 조회 · 발송 기록"         to="/fees"                   colour="orange" />
+          <ModuleCard icon="💳" title="회비 관리"     description="납부 현황 · 납부 처리 · 알림 발송"   to="/fees"                   colour="amber"  />
           <ModuleCard icon="🗳️" title="출석 투표"     description="출석 일정 생성 · 누적 출석 관리"     to="/attendance"             colour="purple" />
           <ModuleCard icon="🏆" title="리그전 운영"    description="시즌 · 경기 결과 · 주차별 순위"      to="/league"                 colour="indigo" />
           <ModuleCard icon="📋" title="경기 기록지"    description="실시간 선수별 스탯 입력"            to="/league/scoresheet"      colour="teal"   />
