@@ -94,17 +94,17 @@ function AdminView({ onPreview }) {
 
       {/* Module card grid — add a card per feature */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
-        <ModuleCard icon="👥" title="회원 관리"    description="전체 계정을 조회하고 상태를 확인합니다."                          to="/admin/users"            colour="blue"   />
-        <ModuleCard icon="📢" title="공지사항"     description="운영 공지를 작성하고 확인합니다."                                to="/notices"                colour="green"  />
-        <ModuleCard icon="💳" title="회비 관리"    description="회원 회비 납부 현황을 조회하고 납부 완료를 체크합니다."              to="/fees"                   colour="amber"  />
-        <ModuleCard icon="🔔" title="회비 납부 알림" description="월말/월초 알림 대상을 조회하고 발송 기록을 관리합니다."           to="/fees"                   colour="orange" />
-        <ModuleCard icon="🗳️" title="출석 투표"    description="출석 일정을 생성하고 회원 누적 출석을 관리합니다."                  to="/attendance"             colour="purple" />
-        <ModuleCard icon="🏆" title="리그전 운영"   description="시즌 생성, 경기 결과 입력, 주차별 순위를 관리합니다."              to="/league"                 colour="indigo" />
-        <ModuleCard icon="📋" title="경기 기록지"   description="경기를 보면서 선수별 스탯을 실시간으로 입력합니다."                to="/league/scoresheet"      colour="teal"   />
-        <ModuleCard icon="📄" title="기록지 조회"   description="저장된 경기 기록과 분석을 읽기 전용으로 확인합니다."               to="/league/scoresheet/view" colour="cyan"   />
-        <ModuleCard icon="🔍" title="회원 검색"    description="활동 회원 목록과 커리어 스탯을 확인합니다."                        to="/members"                colour="pink"   />
-        <ModuleCard icon="📊" title="내 스탯 보기"  description="내 커리어 통산 및 시즌별 기록을 확인합니다."                      onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
-        <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진, 이름, 나이, 포지션을 수정합니다."                    to="/profile"                colour="rose"   />
+        <ModuleCard icon="👥" title="회원 관리"     description="전체 계정 조회 · 상태 관리"          to="/admin/users"            colour="blue"   />
+        <ModuleCard icon="📢" title="공지사항"     description="최신 운영 공지 작성 · 확인"           to="/notices"                colour="green"  />
+        <ModuleCard icon="💳" title="회비 관리"    description="회비 납부 현황 · 납부 처리"            to="/fees"                   colour="amber"  />
+        <ModuleCard icon="🔔" title="회비 납부 알림" description="알림 대상 조회 · 발송 기록"          to="/fees"                   colour="orange" />
+        <ModuleCard icon="🗳️" title="출석 투표"    description="출석 일정 생성 · 누적 출석 관리"       to="/attendance"             colour="purple" />
+        <ModuleCard icon="🏆" title="리그전 운영"   description="시즌 · 경기 결과 · 주차별 순위"        to="/league"                 colour="indigo" />
+        <ModuleCard icon="📋" title="경기 기록지"   description="실시간 선수별 스탯 입력"              to="/league/scoresheet"      colour="teal"   />
+        <ModuleCard icon="📄" title="기록지 조회"   description="저장된 경기 기록 · 분석 조회"         to="/league/scoresheet/view" colour="cyan"   />
+        <ModuleCard icon="🔍" title="회원 검색"    description="활동 회원 목록 · 커리어 스탯"          to="/members"                colour="pink"   />
+        <ModuleCard icon="📊" title="내 스탯 보기"  description="커리어 통산 · 시즌별 기록"            onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
+        <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진 · 이름 · 포지션"          to="/profile"                colour="rose"   />
       </div>
     </div>
   );
@@ -178,14 +178,14 @@ function MemberView() {
         <AttendanceSummary />
 
         <div className="grid grid-cols-2 gap-3 mt-4">
-          <ModuleCard icon="📢" title="공지사항"      description="최신 운영 공지를 확인합니다."                                  to="/notices"                colour="green"  />
-          <ModuleCard icon="💳" title="회비 납부 현황" description="이번 달 회비 납부 상태와 내 납부 이력을 확인합니다."             to="/fees"                   colour="amber"  />
-          <ModuleCard icon="🗳️" title="출석 투표"     description="일정별로 참석/지각/불참을 투표하고 누적 출석을 확인합니다."        to="/attendance"             colour="purple" />
-          <ModuleCard icon="🏀" title="리그전 현황"   description="시즌별 순위표, 경기 결과, 개인 스탯을 확인합니다."               to="/league/view"            colour="indigo" />
-          <ModuleCard icon="📄" title="경기 기록 조회" description="저장된 경기 기록지와 경기 분석을 확인합니다."                   to="/league/scoresheet/view" colour="teal"   />
-          <ModuleCard icon="🔍" title="회원 검색"     description="활동 회원 목록, 포지션, 커리어 스탯을 한눈에 확인합니다."         to="/members"                colour="pink"   />
-          <ModuleCard icon="📊" title="내 스탯 보기"  description="내 커리어 통산 및 시즌별 기록을 확인합니다."                    onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
-          <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진, 이름, 나이, 포지션을 수정합니다."                   to="/profile"                colour="rose"   />
+          <ModuleCard icon="📢" title="공지사항"      description="최신 운영 공지"                    to="/notices"                colour="green"  />
+          <ModuleCard icon="💳" title="회비 납부 현황" description="이번 달 납부 상태 · 납부 이력"       to="/fees"                   colour="amber"  />
+          <ModuleCard icon="🗳️" title="출석 투표"     description="참석 · 지각 · 불참 투표"             to="/attendance"             colour="purple" />
+          <ModuleCard icon="🏀" title="리그전 현황"   description="순위표 · 경기 결과 · 개인 스탯"       to="/league/view"            colour="indigo" />
+          <ModuleCard icon="📄" title="경기 기록 조회" description="저장된 경기 기록지 · 분석"           to="/league/scoresheet/view" colour="teal"   />
+          <ModuleCard icon="🔍" title="회원 검색"     description="활동 회원 목록 · 포지션 · 스탯"       to="/members"                colour="pink"   />
+          <ModuleCard icon="📊" title="내 스탯 보기"  description="커리어 통산 · 시즌별 기록"            onClick={() => setStatsEmpId(user?.emp_id)} colour="violet" />
+          <ModuleCard icon="👤" title="내 정보 수정"  description="프로필 사진 · 이름 · 포지션"          to="/profile"                colour="rose"   />
         </div>
       </div>
     </div>
