@@ -195,18 +195,18 @@ function MemberView() {
 /** Module shortcut card — supports Link (to) or button (onClick) */
 function ModuleCard({ icon, title, description, to, onClick, colour = "blue" }) {
   const colourMap = {
-    blue:   { cardBg: "#dbeafe", iconCls: "bg-blue-200   text-blue-700" },
-    green:  { cardBg: "#bbf7d0", iconCls: "bg-green-200  text-green-700" },
-    amber:  { cardBg: "#fde68a", iconCls: "bg-amber-200  text-amber-800" },
-    orange: { cardBg: "#fed7aa", iconCls: "bg-orange-200 text-orange-700" },
-    purple: { cardBg: "#e9d5ff", iconCls: "bg-purple-200 text-purple-700" },
-    indigo: { cardBg: "#c7d2fe", iconCls: "bg-indigo-200 text-indigo-700" },
-    teal:   { cardBg: "#99f6e4", iconCls: "bg-teal-200   text-teal-700" },
-    cyan:   { cardBg: "#a5f3fc", iconCls: "bg-cyan-200   text-cyan-700" },
-    pink:   { cardBg: "#fbcfe8", iconCls: "bg-pink-200   text-pink-700" },
-    violet: { cardBg: "#ddd6fe", iconCls: "bg-violet-200 text-violet-700" },
-    rose:   { cardBg: "#fecdd3", iconCls: "bg-rose-200   text-rose-700" },
-    red:    { cardBg: "#fecaca", iconCls: "bg-red-200    text-red-700" },
+    blue:   { cardBg: "#93c5fd", iconCls: "bg-blue-600   text-white" },
+    green:  { cardBg: "#6ee7b7", iconCls: "bg-emerald-600 text-white" },
+    amber:  { cardBg: "#fcd34d", iconCls: "bg-amber-600  text-white" },
+    orange: { cardBg: "#fdba74", iconCls: "bg-orange-600 text-white" },
+    purple: { cardBg: "#d8b4fe", iconCls: "bg-purple-600 text-white" },
+    indigo: { cardBg: "#a5b4fc", iconCls: "bg-indigo-600 text-white" },
+    teal:   { cardBg: "#5eead4", iconCls: "bg-teal-600   text-white" },
+    cyan:   { cardBg: "#67e8f9", iconCls: "bg-cyan-600   text-white" },
+    pink:   { cardBg: "#f9a8d4", iconCls: "bg-pink-600   text-white" },
+    violet: { cardBg: "#c4b5fd", iconCls: "bg-violet-600 text-white" },
+    rose:   { cardBg: "#fda4af", iconCls: "bg-rose-600   text-white" },
+    red:    { cardBg: "#fca5a5", iconCls: "bg-red-600    text-white" },
   };
   const c = colourMap[colour] ?? colourMap.blue;
   const inner = (
@@ -215,10 +215,10 @@ function ModuleCard({ icon, title, description, to, onClick, colour = "blue" }) 
         {icon}
       </div>
       <p className="font-bold text-gray-800 text-sm leading-tight">{title}</p>
-      <p className="text-xs text-gray-600 mt-1 leading-relaxed line-clamp-2">{description}</p>
+      <p className="text-xs text-gray-700 mt-1 leading-relaxed">{description}</p>
     </>
   );
-  const cardCls = "card p-4 flex flex-col items-center text-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 aspect-square justify-center";
+  const cardCls = "card p-4 flex flex-col items-center text-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 justify-center overflow-hidden";
   if (onClick) {
     return (
       <button
